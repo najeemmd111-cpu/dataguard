@@ -64,7 +64,7 @@ const HEIGHT = 120
         </figcaption>
       </figure>
 
-      <div class="table-scroll section">
+      <div class="table-scroll section" tabindex="0" role="region" aria-label="Check runs">
         <table class="data-table" data-testid="runs-table">
           <thead>
             <tr>

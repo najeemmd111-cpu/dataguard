@@ -1,32 +1,39 @@
-# End-to-end tests (Phase 2) — Playwright + axe
+# End-to-end tests — Playwright + axe
+
+33 tests that drive a real browser through the whole stack: Postgres → rules engine → dashboard.
+
+| File | What it covers |
+|---|---|
+| `tests/overview.spec.ts` | Summary sentence, dataset health, contract strip labels, failure order, expanding a failure, saving a note, running all checks |
+| `tests/pages.spec.ts` | Dataset page, running one dataset's checks, unknown dataset, run history, AI access log filters |
+| `tests/states.spec.ts` | Engine down (and recovery), nothing failing, no runs yet, failed run, unknown page, keyboard-only use |
+| `tests/accessibility.spec.ts` | axe scan (WCAG 2.1 A/AA) of every page; fails on serious or critical issues |
+
+The accessibility scans run twice: on a desktop in light mode, and on a phone-sized screen in dark mode, because contrast and layout differ.
+
+Tests that need data the engine can't produce on demand (the MCP audit log, an empty or broken engine) replace the API response with `page.route`. Everything else uses the real engine and database.
+
+## Run locally
 
 ```bash
+# 1. In the repo root: database, seed data and rules engine
+docker compose up -d
+
+# 2. Once
 cd e2e
-npm init playwright@latest .        # TypeScript, tests folder "tests", add GitHub Actions: no (already in ci.yml)
-npm install -D @axe-core/playwright
+npm install
+npx playwright install chromium
+
+# 3. Run (starts the dashboard itself, or reuses one already on :5173)
+npm test
+npm run report        # open the HTML report
+npm run test:ui       # interactive mode, good for debugging
 ```
 
-In `playwright.config.ts`: `reporter: [['html', { open: 'never' }]]`, `use: { baseURL: 'http://localhost:5173', trace: 'retain-on-failure', screenshot: 'only-on-failure' }`.
+## In CI
 
-## Tests to write (8–12)
+The `e2e` job in `.github/workflows/ci.yml` starts the stack with Docker Compose, runs the suite, and uploads the HTML report as the `playwright-report` artifact (Actions → the run → Artifacts). Traces and screenshots are kept for any failed test.
 
-1. Overview lists `orders`, `customers`, `products` with the right health
-2. Filter failures by severity
-3. Open `orders` and see the freshness failure with its sample row
-4. Add an annotation and see it appear
-5. Empty state (dataset with no results yet)
-6. API error state (use `page.route` to return 500)
-7. Audit page shows denied calls
-8. Keyboard-only navigation from overview to a dataset
+## What it found
 
-## Axe check (one per page)
-
-```ts
-import AxeBuilder from '@axe-core/playwright';
-
-const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-const serious = results.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''));
-expect(serious).toEqual([]);
-```
-
-Then uncomment the `e2e` job in `.github/workflows/ci.yml`.
+The first axe run on the phone-sized screen caught a real problem: wide tables scrolled sideways, but keyboard users could not reach the scroll area (`scrollable-region-focusable`). The table wrappers are now focusable regions with labels.

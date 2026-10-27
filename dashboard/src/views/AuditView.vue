@@ -56,7 +56,7 @@ const outcomeLabel = { ok: 'Done', denied: 'Refused', error: 'Failed' } as const
         </label>
       </fieldset>
 
-      <div class="table-scroll">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="AI tool calls">
         <table class="data-table" data-testid="audit-table">
           <thead>
             <tr>

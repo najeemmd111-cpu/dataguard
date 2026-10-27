@@ -204,6 +204,8 @@ button {
   text-align: right;
 }
 
+/* Wide tables scroll sideways on small screens. The wrapper is focusable
+   (tabindex=0) so keyboard users can scroll it with the arrow keys. */
 .table-scroll {
   overflow-x: auto;
 }

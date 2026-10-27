@@ -17,7 +17,7 @@ function cell(value: unknown): string {
 </script>
 
 <template>
-  <div class="table-scroll">
+  <div class="table-scroll" tabindex="0" role="region" :aria-label="caption">
     <table class="data-table" data-testid="sample-table">
       <caption class="visually-hidden">
         {{

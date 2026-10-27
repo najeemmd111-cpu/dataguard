@@ -89,7 +89,7 @@ const rows = computed(() => {
 
       <section class="section" aria-labelledby="rules-title">
         <h2 id="rules-title" class="section-title">Every rule in the contract</h2>
-        <div class="table-scroll">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Rules in this contract">
           <table class="data-table" data-testid="rules-table">
             <thead>
               <tr>

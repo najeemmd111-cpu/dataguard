@@ -22,7 +22,7 @@ flowchart LR
 |---|---|---|
 | 1 | Rules engine, data contracts, MCP server, tests, CI | ✅ built and tested |
 | 2 | Vue 3 dashboard | ✅ built |
-| 2 | Playwright + axe tests, dashboard CI | ⬜ see `e2e/` |
+| 2 | Playwright end-to-end + axe accessibility tests, dashboard CI | ✅ 33 tests |
 | 3 | Root-cause agent, hybrid RAG, evaluation, LLM cost log | ⬜ see `agent/`, `docs/` |
 | 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
 | 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
@@ -76,7 +76,8 @@ rules-engine/       FastAPI: contract loader, checkers, runner, scheduler, API, 
 mcp-server/         MCP server: 7 tools, permissions.json, audit log, vitest
 docs/               rules documentation = RAG corpus (phase 3)
 dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI access log
-e2e/ agent/ explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
+e2e/                Playwright + axe: 33 end-to-end and accessibility tests
+agent/ explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```
@@ -86,9 +87,13 @@ Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```bash
 cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt && pytest   # 30 tests
 cd mcp-server && npm test                                                                    # 7 tests
+cd dashboard && npx vitest run                                                               # 9 tests
+cd e2e && npm install && npx playwright install chromium && npm test                         # 33 tests
 ```
 
-The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`.
+The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`. The end-to-end tests need the stack running (`docker compose up -d`); see `e2e/README.md`.
+
+CI runs all four suites on every push. The Playwright HTML report is saved with each run (Actions → run → Artifacts).
 
 ## Design choices
 
@@ -100,4 +105,4 @@ The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`.
 
 ## What's next
 
-See the phase READMEs. The plan: Playwright end-to-end and accessibility tests next, then the RAG evaluation, which is the most distinctive part.
+See the phase READMEs. Next: the root-cause agent with hybrid retrieval and its evaluation (phase 3), which is the most distinctive part.

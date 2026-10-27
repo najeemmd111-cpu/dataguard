@@ -52,19 +52,63 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Phase 2: uncomment once dashboard/ and e2e/ exist.
-  # e2e:
-  #   needs: [rules-engine]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - run: docker compose up -d --build --wait
-  #     - uses: actions/setup-node@v4
-  #       with: { node-version: "22" }
-  #     - run: cd e2e && npm ci && npx playwright install --with-deps chromium
-  #     - run: cd e2e && npx playwright test
-  #     - uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: playwright-report
-  #         path: e2e/playwright-report
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npx eslint .
+      - run: npx vitest run
+      - run: npm run build          # includes the TypeScript type check
+
+  e2e:
+    # Whole stack: Postgres + seed + rules engine in Docker, dashboard from Vite,
+    # then Playwright drives a real browser through it.
+    needs: [rules-engine, dashboard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Postgres, seed data and the rules engine
+        run: docker compose up -d --build
+      - name: Wait for the rules engine
+        run: timeout 180 bash -c 'until curl -sf http://localhost:8000/health; do sleep 2; done'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            dashboard/package-lock.json
+            e2e/package-lock.json
+      - run: npm ci
+        working-directory: dashboard
+      - run: npm ci
+        working-directory: e2e
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+
+      - name: Run Playwright tests (functional + axe accessibility)
+        run: npx playwright test
+        working-directory: e2e
+
+      - name: Upload the Playwright HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 14
+
+      - name: Show service logs if something failed
+        if: failure()
+        run: docker compose logs --no-color --tail 200
