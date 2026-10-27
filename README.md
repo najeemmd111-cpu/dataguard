@@ -4,6 +4,15 @@
 
 Checks a PostgreSQL database against YAML **data contracts**, stores every result, and exposes failures to AI agents through an **MCP server** with role permissions and an audit log. A **Vue 3 dashboard** shows contract health, failing rules and every AI tool call.
 
+![DataGuard dashboard: 4 of 12 checks failing, contract health per dataset, and the failing rules](docs/screenshots/overview.png)
+
+<details>
+<summary>Playwright report: 33 tests passing, including axe accessibility scans on desktop and mobile (dark mode)</summary>
+
+![Playwright HTML report with 33 passed tests](docs/screenshots/playwright-report.png)
+
+</details>
+
 ```mermaid
 flowchart LR
   C[contracts/*.yaml] --> E[Rules engine<br/>Python · FastAPI]
