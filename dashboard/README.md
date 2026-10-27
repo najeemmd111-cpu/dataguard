@@ -1,27 +1,38 @@
-# Dashboard (Phase 2) — Vue 3
+# DataGuard dashboard (Vue 3)
 
-Not built yet. Start with:
+Shows each dataset's contract health, what is failing and why, run history, and every AI tool call made through the MCP server.
+
+## Run
+
+The rules engine must be running (`docker compose up -d` in the repo root).
 
 ```bash
-cd dashboard
-npm create vue@latest .     # choose: TypeScript, Vue Router, Pinia, Vitest, ESLint
 npm install
-npm run dev                 # http://localhost:5173 (already allowed by the engine's CORS)
+npm run dev          # http://localhost:5173
 ```
 
-## Pages to build
+The dashboard calls `/api/...`; Vite forwards that to the engine at `http://localhost:8000`.
+If your engine runs on another port: `ENGINE_URL=http://localhost:8001 npm run dev`.
 
-| Route | Data source | Notes |
-|---|---|---|
-| `/` Overview | `GET /datasets` | health badge per dataset: icon + text + colour (never colour alone) |
-| `/datasets/:name` | `GET /datasets/{name}` | rules, latest results, sample rows, annotations; form to add an annotation |
-| `/runs` | `GET /runs` | chart of failed rules over time |
-| `/audit` | `GET /audit` | table of MCP calls, filter by allowed/denied |
-| `/costs` (phase 3) | `GET /llm-calls` | cost per day, avg/p95 latency per purpose |
+## Pages
 
-## Accessibility checklist
+| Route | What it shows |
+|---|---|
+| `/` | One-sentence summary, a contract strip per dataset, and every failing rule (expand for sample rows and notes) |
+| `/datasets/:name` | The contract's rules with measured vs allowed values; run that dataset's checks |
+| `/runs` | Failed vs checked rules per run, and the run table |
+| `/audit` | MCP tool calls: client, role, arguments, allowed or refused |
 
-- Semantic elements (`<main>`, `<nav>`, `<table>` with `<th scope>`), one `<h1>` per page
-- Every input has a `<label>`; errors announced with `aria-live="polite"`
-- Visible focus styles; everything reachable by keyboard
-- Add `data-testid` attributes now — Playwright tests will use them
+## The contract strip
+
+Each tile is one rule, most severe on the left. Tile height is severity (critical tallest); outlined tiles pass, filled notched tiles fail. Health is always shown with an icon and a word too, never colour alone.
+
+## Checks
+
+```bash
+npm run test:unit -- --run   # component tests (Vitest)
+npm run build                # type-check + production build
+npm run lint
+```
+
+Elements that end-to-end tests need carry `data-testid` attributes (`run-all`, `dataset-orders`, `failure-orders_fresh`, `note-input`, `filter-denied`, …).
