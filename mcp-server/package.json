@@ -1,0 +1,29 @@
+{
+  "name": "dataguard-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server exposing DataGuard data-quality results to AI agents, with role permissions and an audit log",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": { "dataguard-mcp": "dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "pg": "^8.23.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "engines": { "node": ">=20" }
+}

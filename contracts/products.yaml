@@ -1,0 +1,28 @@
+dataset: products
+table: public.products
+owner: catalog-team
+description: Product catalog. Expected to pass all checks (a healthy baseline).
+schedule: "0 */6 * * *"
+
+schema:
+  - { name: product_id, type: integer,   required: true }
+  - { name: name,       type: text,      required: true }
+  - { name: category,   type: text,      required: false }
+  - { name: price,      type: numeric,   required: true }
+  - { name: updated_at, type: timestamp, required: true }
+
+rules:
+  - id: products_schema
+    type: schema
+    severity: high
+
+  - id: products_fresh
+    type: freshness
+    column: updated_at
+    max_age: 7d
+    severity: medium
+
+  - id: products_unique_id
+    type: uniqueness
+    columns: [product_id]
+    severity: critical

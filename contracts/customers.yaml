@@ -1,0 +1,29 @@
+dataset: customers
+table: public.customers
+owner: crm-team
+description: Customer master data from the CRM.
+schedule: "0 * * * *"
+
+schema:
+  - { name: customer_id, type: integer,   required: true }
+  - { name: email,       type: text,      required: true }
+  - { name: country,     type: text,      required: false }
+  - { name: created_at,  type: timestamp, required: true }
+  - { name: updated_at,  type: timestamp, required: true }
+
+rules:
+  - id: customers_schema
+    type: schema
+    severity: high
+
+  - id: customers_email_complete
+    type: completeness
+    column: email
+    min_ratio: 0.99
+    severity: high
+    description: Marketing needs an email for at least 99% of customers.
+
+  - id: customers_unique_id
+    type: uniqueness
+    columns: [customer_id]
+    severity: critical

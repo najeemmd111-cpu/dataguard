@@ -1,0 +1,47 @@
+dataset: orders
+table: public.orders
+owner: sales-data-team
+description: One row per customer order, loaded every 15 minutes by the sales ETL.
+schedule: "*/15 * * * *"
+
+schema:
+  - { name: order_id,    type: integer,   required: true }
+  - { name: customer_id, type: integer,   required: true }
+  - { name: product_id,  type: integer,   required: true }
+  - { name: quantity,    type: integer,   required: true }
+  - { name: amount,      type: numeric,   required: true }
+  - { name: status,      type: text,      required: true }
+  - { name: created_at,  type: timestamp, required: true }
+  - { name: updated_at,  type: timestamp, required: true }
+
+rules:
+  - id: orders_schema
+    type: schema
+    severity: high
+    description: Columns and types match the contract.
+
+  - id: orders_fresh
+    type: freshness
+    column: updated_at
+    max_age: 24h
+    severity: critical
+    description: The sales ETL must have updated orders in the last 24 hours.
+
+  - id: orders_no_null_customer
+    type: completeness
+    column: customer_id
+    min_ratio: 0.99
+    severity: high
+    description: At least 99% of orders have a customer.
+
+  - id: orders_unique_id
+    type: uniqueness
+    columns: [order_id]
+    severity: critical
+    description: order_id identifies exactly one order.
+
+  - id: orders_min_rows
+    type: row_count
+    min: 1000
+    severity: medium
+    description: Guards against an empty or truncated load.

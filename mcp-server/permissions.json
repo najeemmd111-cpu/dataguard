@@ -1,0 +1,6 @@
+{
+  "roles": {
+    "reader": ["list_failures", "get_dataset", "list_datasets", "get_run"],
+    "editor": ["list_failures", "get_dataset", "list_datasets", "get_run", "run_checks", "add_rule", "annotate_anomaly"]
+  }
+}
