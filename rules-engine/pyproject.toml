@@ -1,5 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = ["db: needs a PostgreSQL database (DATABASE_URL or Docker for Testcontainers)"]
 
 [tool.ruff]
