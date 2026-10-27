@@ -1,6 +1,8 @@
 # DataGuard
 
-Checks a PostgreSQL database against YAML **data contracts**, stores every result, and exposes failures to AI agents through an **MCP server** with role permissions and an audit log.
+[![CI](https://github.com/najeemmd111-cpu/dataguard/actions/workflows/ci.yml/badge.svg)](https://github.com/najeemmd111-cpu/dataguard/actions/workflows/ci.yml)
+
+Checks a PostgreSQL database against YAML **data contracts**, stores every result, and exposes failures to AI agents through an **MCP server** with role permissions and an audit log. A **Vue 3 dashboard** shows contract health, failing rules and every AI tool call.
 
 ```mermaid
 flowchart LR
@@ -10,7 +12,7 @@ flowchart LR
   M[MCP server<br/>TypeScript] -- HTTP --> E
   M -- audit rows --> PG
   A[AI client<br/>Claude Desktop / Code] -- MCP stdio --> M
-  D[Dashboard · Vue 3<br/>phase 2] -.-> E
+  D[Dashboard<br/>Vue 3 · TypeScript] -- /api --> E
   E -. webhook .-> N[n8n · phase 4]
 ```
 
@@ -19,14 +21,15 @@ flowchart LR
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Rules engine, data contracts, MCP server, tests, CI | ✅ built and tested |
-| 2 | Vue 3 dashboard, Playwright + axe, CI | ⬜ see `dashboard/`, `e2e/` |
+| 2 | Vue 3 dashboard | ✅ built |
+| 2 | Playwright + axe tests, dashboard CI | ⬜ see `e2e/` |
 | 3 | Root-cause agent, hybrid RAG, evaluation, LLM cost log | ⬜ see `agent/`, `docs/` |
 | 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
 | 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
 
 ## Quick start
 
-Requirements: Docker Desktop, Node 20+ (for the MCP server).
+Requirements: Docker Desktop, Node 20+ (for the MCP server and dashboard).
 
 ```bash
 docker compose up --build          # Postgres + seed data + rules engine on :8000
@@ -35,6 +38,12 @@ curl localhost:8000/failures | jq
 ```
 
 Open http://localhost:8000/docs for the API.
+
+Then the dashboard:
+
+```bash
+cd dashboard && npm install && npm run dev   # http://localhost:5173
+```
 
 Then the MCP server:
 
@@ -66,7 +75,8 @@ db/                 init.sql (all tables) + seed.py
 rules-engine/       FastAPI: contract loader, checkers, runner, scheduler, API, pytest
 mcp-server/         MCP server: 7 tools, permissions.json, audit log, vitest
 docs/               rules documentation = RAG corpus (phase 3)
-dashboard/ e2e/ agent/ explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
+dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI access log
+e2e/ agent/ explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```
@@ -90,4 +100,4 @@ The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`.
 
 ## What's next
 
-See the phase READMEs. The plan: dashboard and Playwright next, then the RAG evaluation, which is the most distinctive part.
+See the phase READMEs. The plan: Playwright end-to-end and accessibility tests next, then the RAG evaluation, which is the most distinctive part.
