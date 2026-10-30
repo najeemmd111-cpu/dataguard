@@ -37,6 +37,10 @@ flowchart LR
 | 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
 | 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
 
+## Retrieval results
+
+53 questions over the 20-page knowledge base. Hybrid search with cross-encoder re-ranking puts the right section first for **83%** of questions, against 58% for keyword search alone and 68% for vector search, at about 235 ms per question. Details: [agent/eval/results.md](agent/eval/results.md).
+
 ## Quick start
 
 Requirements: Docker Desktop, Node 20+ (for the MCP server and dashboard).

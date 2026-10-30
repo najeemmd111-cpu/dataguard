@@ -63,7 +63,14 @@ CI runs the same evaluation with the real models on every push and shows the tab
 
 ## Results
 
-Run `evaluate` and paste the table from `eval/results.md` here.
+| Method | Hit@1 | Recall@5 | MRR@10 | Recall@5 (exact) | Recall@5 (paraphrase) | Median latency | p95 latency |
+|---|---|---|---|---|---|---|---|
+| Keyword (PostgreSQL full-text) | 0.58 | **0.87** | 0.69 | 1.00 | 0.75 | 0 ms | 1 ms |
+| Vector (pgvector embeddings) | 0.68 | **0.94** | 0.79 | 0.96 | 0.93 | 4 ms | 6 ms |
+| Hybrid (RRF of both) | 0.70 | **0.93** | 0.80 | 0.96 | 0.89 | 4 ms | 8 ms |
+| Hybrid + cross-encoder re-rank | 0.83 | **0.96** | 0.89 | 1.00 | 0.93 | 235 ms | 288 ms |
+
+Full report, including the questions that were missed: [eval/results.md](eval/results.md).
 
 ## Tests
 

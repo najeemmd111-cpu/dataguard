@@ -1,0 +1,265 @@
+{
+  "meta": {
+    "questions": 53,
+    "chunks": 112,
+    "pages": 22,
+    "embed_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "rerank_model": "Xenova/ms-marco-MiniLM-L-6-v2",
+    "date": "2026-10-30",
+    "machine": "Linux aarch64",
+    "test_models": false
+  },
+  "methods": [
+    {
+      "method": "keyword",
+      "hit_at_1": 0.585,
+      "recall_at_5": 0.868,
+      "mrr_at_10": 0.695,
+      "recall_at_5_by_kind": {
+        "exact": 1.0,
+        "paraphrase": 0.75
+      },
+      "latency_ms_median": 0.4,
+      "latency_ms_p95": 1.0
+    },
+    {
+      "method": "vector",
+      "hit_at_1": 0.679,
+      "recall_at_5": 0.943,
+      "mrr_at_10": 0.79,
+      "recall_at_5_by_kind": {
+        "exact": 0.96,
+        "paraphrase": 0.929
+      },
+      "latency_ms_median": 4.1,
+      "latency_ms_p95": 6.4
+    },
+    {
+      "method": "hybrid",
+      "hit_at_1": 0.698,
+      "recall_at_5": 0.925,
+      "mrr_at_10": 0.804,
+      "recall_at_5_by_kind": {
+        "exact": 0.96,
+        "paraphrase": 0.893
+      },
+      "latency_ms_median": 4.0,
+      "latency_ms_p95": 7.9
+    },
+    {
+      "method": "hybrid_rerank",
+      "hit_at_1": 0.83,
+      "recall_at_5": 0.962,
+      "mrr_at_10": 0.89,
+      "recall_at_5_by_kind": {
+        "exact": 1.0,
+        "paraphrase": 0.929
+      },
+      "latency_ms_median": 234.6,
+      "latency_ms_p95": 288.0
+    }
+  ],
+  "misses": {
+    "keyword": [
+      {
+        "id": "p03",
+        "question": "A retry after a network timeout inserted the same data again. How do we stop that happening in future?",
+        "expected": [
+          "duplicate-loads#preventing-it"
+        ],
+        "got": [
+          "duplicate-loads#what-happens",
+          "duplicate-loads#typical-causes",
+          "uniqueness#common-causes-of-a-failure"
+        ]
+      },
+      {
+        "id": "p05",
+        "question": "Why is it bad if numbers are kept as strings?",
+        "expected": [
+          "schema#why-a-wrong-type-matters"
+        ],
+        "got": [
+          "partial-loads#preventing-it",
+          "backfills#before-you-start",
+          "timezone-bugs#symptoms"
+        ]
+      },
+      {
+        "id": "p06",
+        "question": "Many shoppers have no contact address, so marketing can't reach them",
+        "expected": [
+          "runbook-customers#customers-email-complete-fails"
+        ],
+        "got": [
+          "runbook-orders#who-to-contact",
+          "runbook-customers#about-the-dataset",
+          "runbook-products#who-to-contact"
+        ]
+      },
+      {
+        "id": "p13",
+        "question": "A partner team renamed a field without telling us",
+        "expected": [
+          "upstream-schema-change#what-happens",
+          "upstream-schema-change#symptoms"
+        ],
+        "got": [
+          "completeness#common-causes-of-a-failure",
+          "alerting-and-ownership#who-owns-a-failure",
+          "missing-values#silent-mapping-changes"
+        ]
+      },
+      {
+        "id": "p17",
+        "question": "The import was switched off during maintenance and nobody turned it back on",
+        "expected": [
+          "late-etl-jobs#common-reasons-a-job-stops"
+        ],
+        "got": [
+          "runbook-products#products-unique-id-fails",
+          "upstream-schema-change#what-to-do",
+          "runbook-products#a-sudden-change-in-size"
+        ]
+      },
+      {
+        "id": "p21",
+        "question": "Where should I start when something looks wrong with the data?",
+        "expected": [
+          "investigation-checklist#step-1-read-the-result"
+        ],
+        "got": [
+          "severity-levels#the-four-levels",
+          "investigation-checklist#step-2-when-did-it-start",
+          "contracts-howto#what-a-contract-is"
+        ]
+      },
+      {
+        "id": "p24",
+        "question": "Is it safe to paste the problem records into a support ticket?",
+        "expected": [
+          "runbook-customers#personal-data"
+        ],
+        "got": [
+          "timezone-bugs#how-to-confirm-it",
+          "timezone-bugs#daylight-saving-time",
+          "backfills#running-it-safely"
+        ]
+      }
+    ],
+    "vector": [
+      {
+        "id": "q22",
+        "question": "What happens when a contract has a duplicate rule id?",
+        "expected": [
+          "contracts-howto#validation-errors"
+        ],
+        "got": [
+          "uniqueness#what-it-checks",
+          "contracts-howto#adding-rules-without-editing-yaml",
+          "uniqueness#how-to-investigate"
+        ]
+      },
+      {
+        "id": "p03",
+        "question": "A retry after a network timeout inserted the same data again. How do we stop that happening in future?",
+        "expected": [
+          "duplicate-loads#preventing-it"
+        ],
+        "got": [
+          "duplicate-loads#typical-causes",
+          "backfills#annotating-the-failure",
+          "late-etl-jobs#what-to-do"
+        ]
+      },
+      {
+        "id": "p17",
+        "question": "The import was switched off during maintenance and nobody turned it back on",
+        "expected": [
+          "late-etl-jobs#common-reasons-a-job-stops"
+        ],
+        "got": [
+          "freshness#fix",
+          "freshness#common-causes-of-a-failure",
+          "runbook-orders#orders-fresh-fails"
+        ]
+      }
+    ],
+    "hybrid": [
+      {
+        "id": "q22",
+        "question": "What happens when a contract has a duplicate rule id?",
+        "expected": [
+          "contracts-howto#validation-errors"
+        ],
+        "got": [
+          "contracts-howto#adding-rules-without-editing-yaml",
+          "glossary#contract-and-rule",
+          "duplicate-loads#symptoms"
+        ]
+      },
+      {
+        "id": "p03",
+        "question": "A retry after a network timeout inserted the same data again. How do we stop that happening in future?",
+        "expected": [
+          "duplicate-loads#preventing-it"
+        ],
+        "got": [
+          "duplicate-loads#typical-causes",
+          "late-etl-jobs#what-to-do",
+          "uniqueness#common-causes-of-a-failure"
+        ]
+      },
+      {
+        "id": "p17",
+        "question": "The import was switched off during maintenance and nobody turned it back on",
+        "expected": [
+          "late-etl-jobs#common-reasons-a-job-stops"
+        ],
+        "got": [
+          "runbook-products#products-unique-id-fails",
+          "runbook-products#a-sudden-change-in-size",
+          "late-etl-jobs#what-to-do"
+        ]
+      },
+      {
+        "id": "p21",
+        "question": "Where should I start when something looks wrong with the data?",
+        "expected": [
+          "investigation-checklist#step-1-read-the-result"
+        ],
+        "got": [
+          "investigation-checklist#step-5-fix-verify-record",
+          "severity-levels#the-four-levels",
+          "contracts-howto#validation-errors"
+        ]
+      }
+    ],
+    "hybrid_rerank": [
+      {
+        "id": "p03",
+        "question": "A retry after a network timeout inserted the same data again. How do we stop that happening in future?",
+        "expected": [
+          "duplicate-loads#preventing-it"
+        ],
+        "got": [
+          "duplicate-loads#typical-causes",
+          "uniqueness#common-causes-of-a-failure",
+          "backfills#running-it-safely"
+        ]
+      },
+      {
+        "id": "p21",
+        "question": "Where should I start when something looks wrong with the data?",
+        "expected": [
+          "investigation-checklist#step-1-read-the-result"
+        ],
+        "got": [
+          "investigation-checklist#step-5-fix-verify-record",
+          "severity-levels#the-four-levels",
+          "missing-values#lookups-that-do-not-match"
+        ]
+      }
+    ]
+  }
+}
