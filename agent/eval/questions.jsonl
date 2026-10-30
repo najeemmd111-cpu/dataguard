@@ -1,0 +1,53 @@
+{"id": "q01", "kind": "exact", "question": "What does the freshness rule measure?", "relevant": ["freshness#what-it-checks"]}
+{"id": "q02", "kind": "exact", "question": "How do I configure min_ratio for a completeness rule?", "relevant": ["completeness#configuration", "thresholds#completeness-min-ratio"]}
+{"id": "q03", "kind": "exact", "question": "orders_unique_id fails, what should I do?", "relevant": ["runbook-orders#orders-unique-id-fails"]}
+{"id": "q04", "kind": "exact", "question": "customers_email_complete is failing", "relevant": ["runbook-customers#customers-email-complete-fails"]}
+{"id": "q05", "kind": "exact", "question": "Which PostgreSQL types are accepted for the numeric contract type?", "relevant": ["schema#type-mapping"]}
+{"id": "q06", "kind": "exact", "question": "How do I make a load idempotent with ON CONFLICT?", "relevant": ["duplicate-loads#preventing-it", "glossary#idempotent-load"]}
+{"id": "q07", "kind": "exact", "question": "What does the schedule */15 * * * * mean in a contract?", "relevant": ["contracts-howto#schedule"]}
+{"id": "q08", "kind": "exact", "question": "Where are rules added with add_rule stored?", "relevant": ["contracts-howto#adding-rules-without-editing-yaml"]}
+{"id": "q09", "kind": "exact", "question": "What is recorded in dq.audit_log?", "relevant": ["mcp-tools#the-audit-log"]}
+{"id": "q10", "kind": "exact", "question": "Why does MCP_ROLE=editor npm run inspect not work?", "relevant": ["mcp-tools#setting-the-role-in-the-mcp-inspector"]}
+{"id": "q11", "kind": "exact", "question": "What max_age should a nightly table use?", "relevant": ["thresholds#freshness-max-age"]}
+{"id": "q12", "kind": "exact", "question": "When is a dataset shown as amber Warning?", "relevant": ["severity-levels#how-severity-sets-dataset-health", "glossary#health"]}
+{"id": "q13", "kind": "exact", "question": "products_fresh fails", "relevant": ["runbook-products#products-fresh-fails"]}
+{"id": "q14", "kind": "exact", "question": "orders_no_null_customer fails", "relevant": ["runbook-orders#orders-no-null-customer-fails"]}
+{"id": "q15", "kind": "exact", "question": "What does a row_count rule check?", "relevant": ["row-count#what-it-checks"]}
+{"id": "q16", "kind": "exact", "question": "How do I choose min and max for a row_count rule?", "relevant": ["row-count#choosing-the-bounds", "thresholds#row-counts-min-and-max"]}
+{"id": "q17", "kind": "exact", "question": "What can the reader role do with the MCP tools?", "relevant": ["mcp-tools#roles-and-permissions"]}
+{"id": "q18", "kind": "exact", "question": "Which fields are required in a contract?", "relevant": ["contracts-howto#required-fields"]}
+{"id": "q19", "kind": "exact", "question": "Daylight saving time problems with job schedules", "relevant": ["timezone-bugs#daylight-saving-time"]}
+{"id": "q20", "kind": "exact", "question": "What is an annotation?", "relevant": ["glossary#annotation", "alerting-and-ownership#acknowledging-a-failure"]}
+{"id": "q21", "kind": "exact", "question": "orders_schema fails because amount is text", "relevant": ["runbook-orders#orders-schema-fails"]}
+{"id": "q22", "kind": "exact", "question": "What happens when a contract has a duplicate rule id?", "relevant": ["contracts-howto#validation-errors"]}
+{"id": "q23", "kind": "exact", "question": "Placeholder values like N/A or unknown in a column", "relevant": ["missing-values#placeholder-values"]}
+{"id": "q24", "kind": "exact", "question": "customers_unique_id fails", "relevant": ["runbook-customers#customers-unique-id-fails"]}
+{"id": "q25", "kind": "exact", "question": "Which MCP tools are read tools and which are write tools?", "relevant": ["mcp-tools#what-the-mcp-server-offers"]}
+{"id": "p01", "kind": "paraphrase", "question": "The newest sales record is three days old and nothing new is arriving. Where do I begin?", "relevant": ["runbook-orders#orders-fresh-fails", "late-etl-jobs#how-to-confirm-it"]}
+{"id": "p02", "kind": "paraphrase", "question": "Every row from yesterday's batch shows up twice", "relevant": ["duplicate-loads#symptoms", "duplicate-loads#what-happens"]}
+{"id": "p03", "kind": "paraphrase", "question": "A retry after a network timeout inserted the same data again. How do we stop that happening in future?", "relevant": ["duplicate-loads#preventing-it"]}
+{"id": "p04", "kind": "paraphrase", "question": "The amount field started arriving as words instead of numbers after a supplier change", "relevant": ["schema#common-causes-of-a-failure", "upstream-schema-change#what-happens", "runbook-orders#orders-schema-fails"]}
+{"id": "p05", "kind": "paraphrase", "question": "Why is it bad if numbers are kept as strings?", "relevant": ["schema#why-a-wrong-type-matters"]}
+{"id": "p06", "kind": "paraphrase", "question": "Many shoppers have no contact address, so marketing can't reach them", "relevant": ["runbook-customers#customers-email-complete-fails"]}
+{"id": "p07", "kind": "paraphrase", "question": "Reports show values shifted by exactly one hour around midnight", "relevant": ["timezone-bugs#symptoms", "timezone-bugs#how-to-confirm-it"]}
+{"id": "p08", "kind": "paraphrase", "question": "Our nightly import only brought in part of the files but reported no error", "relevant": ["partial-loads#what-happens"]}
+{"id": "p09", "kind": "paraphrase", "question": "How can I tell that only half of a day's data came in?", "relevant": ["partial-loads#how-to-confirm-it"]}
+{"id": "p10", "kind": "paraphrase", "question": "Who must repair a broken dataset when another team caused the problem?", "relevant": ["alerting-and-ownership#who-owns-a-failure"]}
+{"id": "p11", "kind": "paraphrase", "question": "We get the same warning every morning and people have started ignoring it", "relevant": ["alerting-and-ownership#avoiding-alert-fatigue"]}
+{"id": "p12", "kind": "paraphrase", "question": "How quickly must someone respond to the most serious problems?", "relevant": ["severity-levels#the-four-levels"]}
+{"id": "p13", "kind": "paraphrase", "question": "A partner team renamed a field without telling us", "relevant": ["upstream-schema-change#what-happens", "upstream-schema-change#symptoms"]}
+{"id": "p14", "kind": "paraphrase", "question": "How do we stop producer teams from breaking our pipeline in the future?", "relevant": ["upstream-schema-change#preventing-it"]}
+{"id": "p15", "kind": "paraphrase", "question": "I need to re-import last week's data safely", "relevant": ["backfills#running-it-safely", "backfills#when-you-need-one"]}
+{"id": "p16", "kind": "paraphrase", "question": "What should I tell people before reprocessing an old period?", "relevant": ["backfills#before-you-start"]}
+{"id": "p17", "kind": "paraphrase", "question": "The import was switched off during maintenance and nobody turned it back on", "relevant": ["late-etl-jobs#common-reasons-a-job-stops"]}
+{"id": "p18", "kind": "paraphrase", "question": "A password rotation broke our import", "relevant": ["late-etl-jobs#common-reasons-a-job-stops"]}
+{"id": "p19", "kind": "paraphrase", "question": "Some fields are blank because the reference table loads later than the main table", "relevant": ["missing-values#lookups-that-do-not-match"]}
+{"id": "p20", "kind": "paraphrase", "question": "A source field was renamed, so new rows quietly get no value and the share of blanks grows every day", "relevant": ["missing-values#silent-mapping-changes"]}
+{"id": "p21", "kind": "paraphrase", "question": "Where should I start when something looks wrong with the data?", "relevant": ["investigation-checklist#step-1-read-the-result"]}
+{"id": "p22", "kind": "paraphrase", "question": "How do I find out what changed right before things broke?", "relevant": ["investigation-checklist#step-2-when-did-it-start"]}
+{"id": "p23", "kind": "paraphrase", "question": "Several tables went stale at the same moment. What does that suggest?", "relevant": ["investigation-checklist#step-3-is-it-one-dataset-or-many", "late-etl-jobs#how-to-confirm-it"]}
+{"id": "p24", "kind": "paraphrase", "question": "Is it safe to paste the problem records into a support ticket?", "relevant": ["runbook-customers#personal-data"]}
+{"id": "p25", "kind": "paraphrase", "question": "How do I let an AI chat assistant look up the broken checks?", "relevant": ["mcp-tools#what-the-mcp-server-offers", "mcp-tools#good-questions-to-ask"]}
+{"id": "p26", "kind": "paraphrase", "question": "Someone uploaded the supplier spreadsheet twice and now the catalogue has repeated items", "relevant": ["runbook-products#products-unique-id-fails"]}
+{"id": "p27", "kind": "paraphrase", "question": "How alarming should a check be while I'm still tuning it?", "relevant": ["severity-levels#choosing-a-severity"]}
+{"id": "p28", "kind": "paraphrase", "question": "How do I set limits that don't fire on ordinary days?", "relevant": ["thresholds#start-from-observed-behaviour"]}

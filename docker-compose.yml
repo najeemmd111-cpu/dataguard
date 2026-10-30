@@ -42,8 +42,27 @@ services:
         condition: service_completed_successfully
     restart: on-failure:5     # safety net if the database is still not reachable after the startup retries
 
+  # Phase 3 knowledge search. Not started by `docker compose up`; run it on demand:
+  #   docker compose run --rm agent ingest
+  #   docker compose run --rm agent search "why are orders stale?"
+  #   docker compose run --rm agent evaluate
+  agent:
+    build: ./agent
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgresql://dataguard:dataguard@postgres:5432/dataguard
+      DOCS_DIR: /docs
+    volumes:
+      - ./docs:/docs:ro
+      - ./agent/eval:/app/eval          # evaluation results are written back here
+      - models:/models                  # downloaded models are kept between runs
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  models:
 
 # The MCP server is not a compose service: an MCP client (Claude Desktop,
 # Claude Code, MCP Inspector) starts it over stdio. See mcp-server/README.md.

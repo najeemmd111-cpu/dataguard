@@ -1,14 +1,14 @@
-# Rules documentation (RAG corpus)
+# Rules documentation
 
-The root-cause agent searches these pages in phase 3. Aim for 20–30 short pages, one topic each, with clear `##` headings (chunks are split by heading).
+The knowledge base that the search, and later the root-cause agent, use to explain failures. There are 20 pages, one topic each. Every `##` heading starts a section that can be found on its own, so keep sections short and give each one a heading that says what it answers.
 
-Suggested pages:
+| Kind | Pages |
+|---|---|
+| Rule types | `freshness`, `completeness`, `uniqueness`, `schema`, `row-count` |
+| Settings | `severity-levels`, `thresholds`, `contracts-howto` |
+| Root causes | `late-etl-jobs`, `upstream-schema-change`, `duplicate-loads`, `partial-loads`, `timezone-bugs`, `missing-values` |
+| Procedures | `investigation-checklist`, `backfills`, `alerting-and-ownership`, `mcp-tools` |
+| Runbooks | `runbook-orders`, `runbook-customers`, `runbook-products` |
+| Reference | `glossary` |
 
-- One per rule type: `freshness.md`, `completeness.md`, `uniqueness.md`, `schema.md`, `row-count.md`
-- `severity-levels.md` — what critical/high/medium/low mean and who gets alerted
-- `thresholds.md` — how to choose `max_age`, `min_ratio`
-- Root causes: `late-etl-jobs.md`, `upstream-schema-change.md`, `duplicate-loads.md`, `partial-loads.md`, `timezone-bugs.md`
-- Runbooks: `runbook-orders.md`, `runbook-customers.md`
-- `contracts-howto.md` — writing a YAML contract
-
-Two starter pages are included: `freshness.md` and `uniqueness.md`.
+This README is not indexed. After editing pages, re-index with `docker compose run --rm agent ingest`. See `agent/README.md`.

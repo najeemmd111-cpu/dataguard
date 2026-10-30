@@ -32,7 +32,8 @@ flowchart LR
 | 1 | Rules engine, data contracts, MCP server, tests, CI | ✅ built and tested |
 | 2 | Vue 3 dashboard | ✅ built |
 | 2 | Playwright end-to-end + axe accessibility tests, dashboard CI | ✅ 33 tests |
-| 3 | Root-cause agent, hybrid RAG, evaluation, LLM cost log | ⬜ see `agent/`, `docs/` |
+| 3A | Knowledge base, hybrid search (full-text + pgvector + re-ranking), retrieval evaluation | ✅ see `agent/` |
+| 3B | Root-cause agent, LLM cost log | ⬜ needs an LLM API key |
 | 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
 | 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
 
@@ -63,6 +64,13 @@ npm run inspect                    # try the tools in the MCP Inspector
 
 …and connect it to Claude Desktop or Claude Code (see `mcp-server/README.md`).
 
+Then the knowledge search:
+
+```bash
+docker compose run --rm agent ingest      # index docs/ (downloads two small models once)
+docker compose run --rm agent evaluate    # compare keyword, vector, hybrid and re-ranked search
+```
+
 ## What the sample data contains
 
 `db/seed.py` creates 1,000 customers, 50 products and ~10,000 orders, with problems injected on purpose:
@@ -83,10 +91,11 @@ contracts/          YAML data contracts (one per dataset)
 db/                 init.sql (all tables) + seed.py
 rules-engine/       FastAPI: contract loader, checkers, runner, scheduler, API, pytest
 mcp-server/         MCP server: 7 tools, permissions.json, audit log, vitest
-docs/               rules documentation = RAG corpus (phase 3)
+docs/               knowledge base: 20 pages on rules, causes and runbooks (search corpus)
+agent/              knowledge search: chunking, pgvector + full-text, RRF, re-ranking, evaluation
 dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI access log
 e2e/                Playwright + axe: 33 end-to-end and accessibility tests
-agent/ explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
+explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```
@@ -98,11 +107,12 @@ cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt
 cd mcp-server && npm test                                                                    # 7 tests
 cd dashboard && npx vitest run                                                               # 9 tests
 cd e2e && npm install && npx playwright install chromium && npm test                         # 33 tests
+cd agent && pip install -r requirements-dev.txt && pytest                                     # 19 tests
 ```
 
 The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`. The end-to-end tests need the stack running (`docker compose up -d`); see `e2e/README.md`.
 
-CI runs all four suites on every push. The Playwright HTML report is saved with each run (Actions → run → Artifacts).
+CI runs all five suites on every push, plus the retrieval evaluation with the real models (results in the `agent` job summary). The Playwright HTML report is saved with each run (Actions → run → Artifacts).
 
 ## Design choices
 
@@ -114,4 +124,4 @@ CI runs all four suites on every push. The Playwright HTML report is saved with 
 
 ## What's next
 
-See the phase READMEs. Next: the root-cause agent with hybrid retrieval and its evaluation (phase 3), which is the most distinctive part.
+See the phase READMEs. Next: the root-cause agent (phase 3B), which uses the best retrieval method to explain failures, with every LLM call's tokens, cost and latency logged.

@@ -1,41 +1,79 @@
-# Agent, hybrid RAG and evaluation (Phase 3)
+# Knowledge search and evaluation (Phase 3, part A)
 
-Planned layout:
+Searches the rules documentation in [`docs/`](../docs) four different ways, and measures which way finds the right section most often. The root-cause agent (part B) will use the best method to look up causes and fixes.
 
-```
-agent/
-  requirements.txt        # sentence-transformers, rank_bm25, psycopg, an LLM SDK
-  llm.py                  # ONE helper for every LLM call -> writes dq.llm_calls
-  prices.yaml             # $/1M tokens per model, used to compute cost_usd
-  ingest.py               # chunk docs/*.md by heading, embed, store in doc_chunks
-  retrieve.py             # keyword, vector, hybrid (RRF), hybrid + cross-encoder re-rank
-  root_cause.py           # agent loop: MCP tools + read-only SQL + doc search -> {cause, evidence, fix}
-  eval/
-    questions.jsonl       # 40–60 {question, relevant_chunk_ids, reference_answer}
-    eval_retrieval.py     # recall@5 and MRR for the 4 retrieval setups
-    eval_answers.py       # LLM-as-judge: correctness + faithfulness
-```
+## How it works
 
-## Table to add (put it in db/init.sql when you start)
+1. **Chunking.** Each page is split into sections at its `##` headings, about 110 sections from 22 pages. Long sections are split again into overlapping parts. Every section has a stable id such as `runbook-orders#orders-fresh-fails`.
+2. **Indexing.** Each chunk is stored in `dq.doc_chunks` with:
+   - an **embedding** from [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (384 numbers that capture meaning), in a **pgvector** column with an HNSW index
+   - a **tsvector** for PostgreSQL full-text search, with a GIN index
+3. **Search**, four ways:
 
-```sql
-CREATE TABLE dq.doc_chunks (
-  chunk_id   TEXT PRIMARY KEY,          -- e.g. 'freshness.md#common-causes'
-  source     TEXT NOT NULL,
-  heading    TEXT,
-  content    TEXT NOT NULL,
-  embedding  vector(384),               -- all-MiniLM-L6-v2
-  tsv        tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED
-);
-CREATE INDEX ON dq.doc_chunks USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ON dq.doc_chunks USING gin (tsv);
+| Method | How it ranks |
+|---|---|
+| `keyword` | PostgreSQL full-text search, ranked with `ts_rank_cd` (BM25-like, not BM25) |
+| `vector` | Cosine similarity between the question's embedding and each chunk's (pgvector) |
+| `hybrid` | Both lists merged with Reciprocal Rank Fusion: each list gives a chunk `1 / (60 + rank)` |
+| `hybrid_rerank` | The top 20 hybrid results re-scored by a cross-encoder ([`ms-marco-MiniLM-L-6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2)), which reads the question and the passage together |
+
+The models run with [fastembed](https://github.com/qdrant/fastembed) on ONNX Runtime: no PyTorch, about 90 MB per model, downloaded once and cached.
+
+## Run it (Docker, recommended on a Mac)
+
+The database must be running (`docker compose up -d` in the repo root). Then, from the repo root:
+
+```bash
+docker compose run --rm agent ingest                                  # index docs/ (first run downloads the models)
+docker compose run --rm agent search "why are orders three days old?"  # try a question
+docker compose run --rm agent evaluate                                # compare the four methods
 ```
 
-## Honesty note for the README / CV
+`evaluate` prints a results table and saves it to `agent/eval/results.md` and `results.json`.
 
-Postgres `ts_rank_cd` is BM25-*like*, not BM25. Either call it "full-text search", or use `rank_bm25` / ParadeDB `pg_search` for real BM25.
+Try one method at a time: `docker compose run --rm agent search "…" --method keyword`.
 
-## Safety
+## Run it with local Python (3.10 or newer)
 
-- The agent's SQL runs as a read-only role: `CREATE ROLE dq_agent LOGIN PASSWORD '...'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO dq_agent;`
-- Cap the loop (e.g. 8 steps) and the tokens per run.
+```bash
+cd agent
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+python -m dataguard_agent ingest
+python -m dataguard_agent evaluate
+```
+
+## The evaluation
+
+[`eval/questions.jsonl`](eval/questions.jsonl) holds 53 questions. Each one lists the section or sections that answer it.
+
+- **25 `exact` questions** reuse words from the docs, such as rule ids and setting names: *"orders_unique_id fails, what should I do?"*
+- **28 `paraphrase` questions** describe the same needs in other words: *"Every row from yesterday's batch shows up twice."*
+
+The split shows where each method is strong. Keyword search finds exact terms; embeddings should do better when the words differ.
+
+Metrics, per method:
+
+- **Hit@1**: the answer section is ranked first.
+- **Recall@5**: the answer section is in the top 5. This is what an agent would read.
+- **MRR@10**: the mean of 1 / rank of the answer section.
+- **Latency**: median and 95th percentile per question, including embedding the question.
+
+CI runs the same evaluation with the real models on every push and shows the table in the run's summary (Actions → the run → `agent` job summary).
+
+## Results
+
+Run `evaluate` and paste the table from `eval/results.md` here.
+
+## Tests
+
+```bash
+pytest                                          # chunking, metrics, fusion, and that every question points at a real section
+TEST_DATABASE_URL=postgresql://... pytest       # plus search tests against PostgreSQL + pgvector
+```
+
+The database tests use small offline stand-in models (`DG_EMBEDDER=hashing`), so they need no downloads. They check the code, not the search quality. Reports made with the stand-ins say so at the top.
+
+## Adding knowledge
+
+Add or edit a page in `docs/`, run `ingest` again, and add questions for it to `eval/questions.jsonl`. A test fails if a question points at a section that no longer exists, for example after renaming a heading.

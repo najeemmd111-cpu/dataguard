@@ -21,3 +21,7 @@ e2e/test-results/
 .DS_Store
 .idea/
 .vscode/
+
+# Phase 3
+agent/eval-results/
+.fastembed-cache/
