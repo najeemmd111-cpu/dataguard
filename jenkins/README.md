@@ -41,6 +41,12 @@ After a build, open it and click **Tests** for every test case from all stages; 
 - **Plugins** are listed in [`plugins.txt`](plugins.txt) and installed when the image is built.
 - The job builds from GitHub (`main`), like GitHub Actions. To build a fork or another branch, set `DATAGUARD_REPO` or `DATAGUARD_BRANCH` in `.env` and run `docker compose --profile ci up -d`.
 
+## Result
+
+On a MacBook Air (Apple Silicon, Docker Desktop), the first full build took about 3 minutes with downloads, and later builds about **1 min 17 s**, all six stages green.
+
+One problem found on the way: `uv` downloads 50 packages at once by default, and Docker Desktop's network on a Mac stalled under that (7+ minutes for a small install, sometimes a timeout). The Jenkinsfile limits it to 4 parallel downloads with retries, which brought the install down to seconds.
+
 ## Jenkins and GitHub Actions
 
 | | GitHub Actions | Jenkins |

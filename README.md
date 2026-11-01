@@ -41,7 +41,6 @@ flowchart LR
 | 4 | Spring AI explainer (Java 21, Spring Boot 3.5, structured output) | ✅ see `explainer-service/` |
 | 5 | Kubernetes on kind: StatefulSet, Job, Deployments, probes, non-root, CI deploy + smoke test | ✅ see `k8s/` |
 | 5 | Jenkins in Docker: Configuration as Code, pipeline job created automatically, JUnit reports | ✅ see `jenkins/` |
-| 5 | Cloud Run deployment | ⬜ see `deploy/gcp/` |
 
 ## Retrieval results
 
@@ -148,7 +147,6 @@ e2e/                Playwright + axe: 42 end-to-end and accessibility tests
 n8n/                alert workflow (webhook → email via Mailpit, Slack for new critical failures)
 explainer-service/  Java Spring Boot + Spring AI: POST /explain → cause, impact, fix steps
 k8s/                Kubernetes manifests, deploy.sh, smoke-test.sh (kind)
-deploy/             phase 5 cloud deployment (README with instructions)
 .github/workflows/  CI
 jenkins/            Jenkins image with the toolchains, Configuration as Code (phase 5)
 Jenkinsfile         the Jenkins pipeline: same checks as GitHub Actions, with JUnit reports
@@ -180,4 +178,4 @@ CI runs all six suites on every push, plus the retrieval evaluation with the rea
 
 ## What's next
 
-See the phase READMEs. Next: one cloud deployment (Cloud Run).
+All phases are done. A cloud deployment (for example Cloud Run) is left out on purpose: everything runs locally for free, on Docker Compose, kind and Jenkins.
