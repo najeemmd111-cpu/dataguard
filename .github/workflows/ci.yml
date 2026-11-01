@@ -103,6 +103,21 @@ jobs:
           name: retrieval-evaluation
           path: agent/eval-results
 
+  explainer:
+    # Phase 4b: Java Spring Boot + Spring AI. Tests use a fake language model, so no Ollama is needed.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: explainer-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: mvn -B verify
+
   dashboard:
     runs-on: ubuntu-latest
     defaults:

@@ -1,0 +1,32 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: dataguard-explainer
+  jackson:
+    property-naming-strategy: SNAKE_CASE   # same JSON style as the rest of DataGuard
+  ai:
+    ollama:
+      base-url: ${OLLAMA_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${DG_LLM_MODEL:qwen2.5:3b}
+          temperature: 0.0
+          num-ctx: 8192
+  datasource:
+    # Only used to log model calls into dq.llm_calls (best effort).
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/dataguard}
+    username: ${SPRING_DATASOURCE_USERNAME:dataguard}
+    password: ${SPRING_DATASOURCE_PASSWORD:dataguard}
+    hikari:
+      initialization-fail-timeout: -1      # start even if the database is not up yet
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

@@ -105,6 +105,23 @@ services:
       - "8025:8025"     # web inbox and HTTP API
       - "1025:1025"     # SMTP, if you prefer n8n's Send Email node
 
+  # Phase 4b: Spring AI explainer (Java). Start it with:
+  #   docker compose --profile explainer up -d --build
+  explainer:
+    build: ./explainer-service
+    profiles: ["explainer"]
+    ports:
+      - "8081:8081"
+    environment:
+      OLLAMA_URL: http://host.docker.internal:11434      # Ollama runs on the host
+      DG_LLM_MODEL: ${DG_LLM_MODEL:-qwen2.5:3b}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dataguard
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
   models:

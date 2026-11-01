@@ -25,3 +25,6 @@ e2e/test-results/
 # Phase 3
 agent/eval-results/
 .fastembed-cache/
+
+# Phase 4b
+explainer-service/target/
