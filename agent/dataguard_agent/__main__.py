@@ -8,6 +8,7 @@
     python -m dataguard_agent setup                    # agent tables + read-only database user
     python -m dataguard_agent investigate orders_fresh # explain why a rule failed (needs Ollama)
     python -m dataguard_agent evaluate-agent           # grade the agent on failures with a known cause
+    python -m dataguard_agent regrade 2 3 4 5          # re-grade saved investigations (e.g. after changing the grader)
 """
 
 from __future__ import annotations
@@ -176,6 +177,34 @@ def cmd_evaluate_agent(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_regrade(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    cases = {(c.dataset, c.rule_id): c for c in load_cases(Path(args.cases))}
+    rows, models = [], set()
+    with connect(settings.database_url) as conn:
+        for inv_id in args.ids:
+            record = conn.execute("SELECT * FROM dq.investigations WHERE investigation_id = %s", (inv_id,)).fetchone()
+            if not record:
+                print(f"Investigation {inv_id} not found, skipped.")
+                continue
+            case = cases.get((record["dataset"], record["rule_id"]))
+            if not case:
+                print(f"Investigation {inv_id} ({record['rule_id']}) has no test case, skipped.")
+                continue
+            models.add(record["model"])
+            rows.append(grade(case, record))
+    if not rows:
+        print("Nothing to grade.")
+        return 1
+    report = agent_markdown(rows, ", ".join(sorted(models)), title=args.title)
+    print("\n" + report)
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"{args.name}.md").write_text(report, encoding="utf-8")
+    print(f"Saved {out / (args.name + '.md')}")
+    return 0
+
+
 def cmd_sections(_: argparse.Namespace) -> int:
     for chunk in load_docs(get_settings().docs_dir):
         if "~" not in chunk.chunk_id or chunk.chunk_id.endswith("~1"):
@@ -209,6 +238,13 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--cases", default=str(EVAL_DIR / "agent_cases.jsonl"))
     a.add_argument("--output", default=str(EVAL_DIR))
     a.set_defaults(func=cmd_evaluate_agent)
+    r = sub.add_parser("regrade", help="re-grade saved investigations by id")
+    r.add_argument("ids", nargs="+", type=int)
+    r.add_argument("--cases", default=str(EVAL_DIR / "agent_cases.jsonl"))
+    r.add_argument("--output", default=str(EVAL_DIR))
+    r.add_argument("--name", default="agent_results_before", help="output file name, without .md")
+    r.add_argument("--title", default="Root-cause agent evaluation (re-graded)")
+    r.set_defaults(func=cmd_regrade)
     args = parser.parse_args(argv)
     return args.func(args)
 

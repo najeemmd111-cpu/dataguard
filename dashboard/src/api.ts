@@ -87,6 +87,7 @@ export interface AgentAnswer {
   fix_steps: string[]
   confidence: 'low' | 'medium' | 'high'
   sources: string[]
+  warnings?: string[]
 }
 
 export interface Investigation {

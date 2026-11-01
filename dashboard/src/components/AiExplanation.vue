@@ -38,6 +38,15 @@ onMounted(async () => {
     </p>
 
     <template v-else-if="latest?.answer">
+      <p
+        v-for="(w, i) in latest.answer.warnings ?? []"
+        :key="i"
+        class="ai__warning"
+        role="note"
+        data-testid="ai-warning"
+      >
+        <strong>Warning:</strong> {{ w }}
+      </p>
       <p class="ai__summary">{{ latest.answer.summary }}</p>
       <dl class="ai__body">
         <dt>Likely cause</dt>
@@ -83,6 +92,14 @@ onMounted(async () => {
 .ai__title {
   margin: 0 0 var(--space-2);
   font-size: var(--step-0);
+}
+
+.ai__warning {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--critical);
+  color: var(--ink);
+  background: var(--paper);
 }
 
 .ai__summary {

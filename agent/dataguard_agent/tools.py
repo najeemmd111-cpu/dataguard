@@ -127,6 +127,11 @@ class Tools:
                 ro.read_only = True
                 ro.execute("SET statement_timeout = '5s'")
                 rows = ro.execute(f"SELECT * FROM ({query}) AS agent_query LIMIT {MAX_ROWS + 1}").fetchall()
+        except psycopg.errors.UndefinedTable as exc:
+            return (f"SQL error: {str(exc).strip().splitlines()[0]}. "
+                    f"Only these tables exist and can be queried: {TABLES_HELP}")
+        except psycopg.errors.UndefinedColumn as exc:
+            return f"SQL error: {str(exc).strip().splitlines()[0]}. Columns per table: {TABLES_HELP}"
         except psycopg.Error as exc:
             return f"SQL error: {str(exc).strip().splitlines()[0]}"
         truncated = len(rows) > MAX_ROWS

@@ -219,12 +219,77 @@ def test_model_unavailable_is_logged_as_a_failed_call(env):
 
 # --- grading ------------------------------------------------------------------------
 
-def test_grading():
-    case = Case("orders", "orders_fresh", ["runbook-orders#orders-fresh-fails", "late-etl-jobs#"],
-                [["etl", "job"], ["stopped", "72"], ["timezone"]])
-    record = {"status": "ok", "tool_calls": 2, "input_tokens": 100, "output_tokens": 20, "latency_ms": 1500,
-              "answer": json.loads(answer_json(sources=["late-etl-jobs#symptoms"]))}
-    g = grade(case, record)
-    assert g["cites_right_doc"] is True
+FRESH_CASE = Case("orders", "orders_fresh", ["runbook-orders#orders-fresh-fails", "late-etl-jobs#"],
+                  [["etl", "job"], ["stopped", "72"], ["timezone"]],
+                  cause=[["etl", "job"]], wrong=["not the sales etl"])
+
+
+def _record(**answer_overrides) -> dict:
+    return {"investigation_id": 1, "status": "ok", "tool_calls": 2, "input_tokens": 100, "output_tokens": 20,
+            "latency_ms": 1500, "answer": json.loads(answer_json(**answer_overrides))}
+
+
+def test_grading_a_correct_answer():
+    g = grade(FRESH_CASE, _record(sources=["late-etl-jobs#symptoms"]))
+    assert g["cites_right_doc"] and g["right_cause"] and not g["false_claims"]
+    assert g["correct"] is True
     assert g["key_facts"] == pytest.approx(2 / 3)
     assert g["missing_facts"] == [["timezone"]]
+
+
+def test_grading_catches_a_wrong_cause():
+    g = grade(FRESH_CASE, _record(summary="Orders are old because the database connection failed, not the sales ETL.",
+                                  likely_cause="A broken database connection."))
+    assert g["false_claims"] == ["not the sales etl"]
+    assert g["correct"] is False
+
+
+def test_grading_catches_claimed_actions():
+    g = grade(FRESH_CASE, _record(summary="The query to remove duplicates was executed successfully, "
+                                          "removing 10,025 duplicate orders."))
+    assert "executed successfully" in g["false_claims"]
+    assert g["correct"] is False
+
+
+def test_grading_requires_the_cause_in_summary_or_cause():
+    g = grade(FRESH_CASE, _record(summary="Orders are stale.", likely_cause="Unknown.",
+                                  fix_steps=["Restart the ETL job"]))
+    assert g["right_cause"] is False     # "ETL" only appears in the fix steps
+    assert g["correct"] is False
+
+
+def test_answer_claiming_an_action_gets_a_warning_and_low_confidence(env):
+    agent, _ = make_agent(env, [
+        Reply("done", [], 1, 1, 1),
+        Reply(answer_json(summary="I restarted the job and the orders were fixed.", confidence="high"), [], 1, 1, 1),
+    ])
+    record = agent.investigate("orders", "orders_fresh")
+    assert record["status"] == "ok"
+    assert record["answer"]["confidence"] == "low"
+    assert "can only read data" in record["answer"]["warnings"][0]
+    assert any(t["type"] == "false_action_claim" for t in record["trace"])
+
+
+def test_unknown_table_error_lists_the_real_tables(env):
+    conn, settings, searcher = env
+    out = Tools(conn, searcher, settings).run_sql("SELECT * FROM dq.jobs")
+    assert out.startswith("SQL error") and "Only these tables exist" in out and "public.orders" in out
+
+
+def test_prompt_states_the_key_numbers_and_read_only_rule(env):
+    agent, backend = make_agent(env, [Reply("done", [], 1, 1, 1), Reply(answer_json(), [], 1, 1, 1)])
+    agent.investigate("orders", "orders_fresh")
+    system, user = backend.requests[0]["messages"][0]["content"], backend.requests[0]["messages"][1]["content"]
+    assert "You can only READ data" in system
+    assert "Key facts: measured 72.4h, allowed 24h" in user
+
+
+def test_regrade_command_scores_saved_investigations(env, tmp_path, monkeypatch, capsys):
+    from dataguard_agent.__main__ import main
+
+    agent, _ = make_agent(env, [Reply("done", [], 1, 1, 1), Reply(answer_json(), [], 1, 1, 1)])
+    inv_id = agent.investigate("orders", "orders_fresh")["investigation_id"]
+    monkeypatch.setenv("DATABASE_URL", DB_URL)
+    assert main(["regrade", str(inv_id), "--output", str(tmp_path), "--name", "before"]) == 0
+    report = (tmp_path / "before.md").read_text()
+    assert "| `orders/orders_fresh` | yes | yes | yes | yes |" in report

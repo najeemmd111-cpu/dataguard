@@ -74,6 +74,23 @@ test.describe('AI explanations', () => {
     await expect(ai).toContainText('check the evidence before acting')
   })
 
+  test('a warning is shown when the answer claims something the agent cannot do', async ({ page }) => {
+    const flagged = {
+      ...investigation,
+      answer: {
+        ...investigation.answer,
+        confidence: 'low',
+        warnings: ['This answer claims an action the agent cannot take (it can only read data): "executed successfully".'],
+      },
+    }
+    await page.route('**/api/investigations?*', (route) => route.fulfill({ json: [flagged] }))
+    await page.goto('/')
+    const failure = page.getByTestId('failure-orders_fresh')
+    await failure.getByRole('button', { name: /orders_fresh/ }).click()
+    await expect(failure.getByTestId('ai-warning')).toContainText('it can only read data')
+    await expect(failure.getByTestId('ai-orders_fresh')).toContainText('Confidence: low')
+  })
+
   test('a failure without an explanation says how to ask for one', async ({ page }) => {
     await mockAgentData(page, { explained: true })
     await page.goto('/')

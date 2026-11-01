@@ -14,6 +14,7 @@ trace, in dq.investigations.
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Literal
 
@@ -48,13 +49,34 @@ You can call tools:
 - run_sql: one read-only SELECT to check the data. Tables: {tables}
 
 Rules:
+- You can only READ data. You cannot change, delete, fix or re-run anything. Never claim you did.
+- Only the tables listed above exist. There is no table of jobs, schedules or logs.
 - Base every statement on the failure details, tool results or documentation. Never invent numbers or events.
 - Be efficient: at most {rounds} rounds of tool calls. Stop calling tools once you have enough evidence.
 - Cite documentation by its section id in square brackets, for example [runbook-orders#orders-fresh-fails]."""
 
-FINAL_PROMPT = """Now write your final answer as JSON with these fields: summary (one sentence), likely_cause, \
-evidence (facts you observed, with numbers), fix_steps (concrete actions), confidence (low, medium or high), \
-sources (the section ids of the documentation you relied on, exactly as written in square brackets)."""
+FINAL_PROMPT = """Now write your final answer as JSON with these fields:
+- summary: one sentence
+- likely_cause: the most likely cause, consistent with the documentation you found
+- evidence: facts you actually observed, each quoting a number or value from the failure details or a tool \
+result (for example "measured 193.9h against 24h allowed"). Do not include anything a tool result did not show.
+- fix_steps: concrete actions for a person to take. You have not done any of them.
+- confidence: low, medium or high. Use low if your tool calls failed or the evidence is thin.
+- sources: the section ids of the documentation you relied on, exactly as written in square brackets."""
+
+# The agent can only read. Wording like this in the summary, cause or evidence is a false claim.
+ACTION_CLAIM = re.compile(
+    r"\b(i|we) (deleted|removed|fixed|updated|restarted|reran|re-ran|dropped)\b"
+    r"|\b(was|were|has been|have been|got) (deleted|removed|fixed|dropped|restarted|corrected)\b"
+    r"|\b(deleted|deleting|removed|removing|dropped|dropping) \d[\d,]* (rows|records|orders|duplicates|duplicate)"
+    r"|executed successfully",
+    re.IGNORECASE,
+)
+
+
+def claimed_actions(answer: dict) -> list[str]:
+    text = " ".join([answer.get("summary", ""), answer.get("likely_cause", ""), *answer.get("evidence", [])])
+    return sorted({m.group(0) for m in ACTION_CLAIM.finditer(text)})
 
 
 def latest_result(conn: psycopg.Connection, dataset: str, rule_id: str, result_id: int | None = None) -> dict:
@@ -157,6 +179,8 @@ class RootCauseAgent:
                                                                rounds=self.settings.max_tool_rounds)},
             {"role": "user", "content": (
                 f"Rule `{context['rule_id']}` on dataset `{context['dataset']}` failed.\n\n"
+                f"Key facts: measured {context['measured_value']}, allowed {context['allowed']}. "
+                f"{context['message']}\n\n"
                 f"Failure details:\n{json.dumps(context, default=str, indent=1)}\n\n"
                 f"Documentation found for this failure:\n{docs}\n\n"
                 "Investigate with the tools if needed, then stop."
@@ -204,4 +228,17 @@ class RootCauseAgent:
             trace.append({"type": "unverified_sources", "sources": unverified})
         out = answer.model_dump()
         out["sources"] = list(dict.fromkeys(verified))
+
+        # Guard: the agent cannot change data, so an answer claiming it did is wrong. Say so loudly.
+        claims = claimed_actions(out)
+        out["warnings"] = []
+        if claims:
+            out["warnings"].append(
+                "This answer claims an action the agent cannot take (it can only read data): "
+                + "; ".join(f'"{c}"' for c in claims) + ". Treat it with caution."
+            )
+            out["confidence"] = "low"
+            trace.append({"type": "false_action_claim", "claims": claims})
+        if not out["sources"]:
+            out["warnings"].append("No documentation source could be verified for this answer.")
         return out

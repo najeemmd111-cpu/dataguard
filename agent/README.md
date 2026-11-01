@@ -97,13 +97,25 @@ How an investigation works:
 
 **Model.** By default `qwen2.5:3b` through Ollama, free and on your own machine. Use another Ollama model with `DG_LLM_MODEL=llama3.2:3b docker compose run --rm agent …`. For a paid hosted model, set `DG_PRICE_IN_PER_MTOK` and `DG_PRICE_OUT_PER_MTOK` so costs are computed.
 
-**Grading.** `evaluate-agent` runs the agent on the 4 seeded failures, whose real causes are known, and checks each answer: valid JSON, cites a section that explains this failure, and mentions the key facts (for example *duplicate* and *upsert*). Grading uses keywords, not a second model, so it is simple and transparent, but it does not judge reasoning quality. Results are saved to `eval/agent_results.md`.
+**Grading.** `evaluate-agent` runs the agent on the 4 seeded failures, whose real causes are known, and grades each answer:
+
+- **Right cause**: the summary and likely cause name the real cause (for example a stopped ETL job), not just any part of the answer
+- **No false claims**: it does not claim to have changed data (the agent can only read) or state a known wrong conclusion (for example "not the ETL job")
+- **Cites a right doc**: at least one cited section explains this failure
+- **Correct**: all of the above, with a valid answer
+- **Key facts**: the share of expected facts mentioned anywhere
+
+Grading uses keywords, not a second model, so it is simple and transparent, but it does not judge reasoning quality. Results are saved to `eval/agent_results.md`. `regrade <ids>` re-scores saved investigations, for example to compare answers from before and after a prompt change with the same grader.
+
+A first version of the grader only checked sources and keywords anywhere in the answer. It reported 100% "cites a right doc" while 2 of 4 answers were wrong: one blamed the database connection instead of the stopped ETL job, and one claimed to have deleted 10,025 rows, which the read-only agent cannot do. The stricter checks above came from reading those answers.
+
+**False-claim guard.** After each answer, a check looks for claims of actions the agent cannot take ("deleted 10,025 rows", "was fixed", "executed successfully"). If it finds one, the answer gets a warning, its confidence is set to low, and the dashboard shows the warning above the explanation.
 
 ## Tests
 
 ```bash
 pytest                                          # chunking, metrics, fusion, and that every question points at a real section
-TEST_DATABASE_URL=postgresql://... pytest       # plus search and agent tests against PostgreSQL + pgvector (35 tests)
+TEST_DATABASE_URL=postgresql://... pytest       # plus search and agent tests against PostgreSQL + pgvector (42 tests)
 ```
 
 The database tests use small offline stand-in models (`DG_EMBEDDER=hashing`) and a scripted language model that replays prepared replies, so they need no downloads and no Ollama. They test tool calls, the round limit, retries, the read-only user, and logging. They check the code, not the search quality. Reports made with the stand-ins say so at the top.

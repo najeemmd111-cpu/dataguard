@@ -31,7 +31,7 @@ flowchart LR
 |---|---|---|
 | 1 | Rules engine, data contracts, MCP server, tests, CI | ✅ built and tested |
 | 2 | Vue 3 dashboard | ✅ built |
-| 2 | Playwright end-to-end + axe accessibility tests, dashboard CI | ✅ 41 tests |
+| 2 | Playwright end-to-end + axe accessibility tests, dashboard CI | ✅ 42 tests |
 | 3A | Knowledge base, hybrid search (full-text + pgvector + re-ranking), retrieval evaluation | ✅ see `agent/` |
 | 3B | Root-cause agent (tools, read-only SQL, structured answers), LLM usage logging, AI usage page | ✅ local model via Ollama |
 | 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
@@ -104,7 +104,7 @@ mcp-server/         MCP server: 7 tools, permissions.json, audit log, vitest
 docs/               knowledge base: 20 pages on rules, causes and runbooks (search corpus)
 agent/              knowledge search (pgvector + full-text, RRF, re-ranking, evaluation) and the root-cause agent
 dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI access log
-e2e/                Playwright + axe: 41 end-to-end and accessibility tests
+e2e/                Playwright + axe: 42 end-to-end and accessibility tests
 explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
@@ -116,8 +116,8 @@ Jenkinsfile         same pipeline for Jenkins (phase 5)
 cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt && pytest   # 31 tests
 cd mcp-server && npm test                                                                    # 7 tests
 cd dashboard && npx vitest run                                                               # 12 tests
-cd e2e && npm install && npx playwright install chromium && npm test                         # 41 tests
-cd agent && pip install -r requirements-dev.txt && pytest                                     # 35 tests
+cd e2e && npm install && npx playwright install chromium && npm test                         # 42 tests
+cd agent && pip install -r requirements-dev.txt && pytest                                     # 42 tests
 ```
 
 The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`. The end-to-end tests need the stack running (`docker compose up -d`); see `e2e/README.md`.
