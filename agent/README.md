@@ -112,6 +112,16 @@ A first version of the grader only checked sources and keywords anywhere in the 
 
 A small local model does not give the same answer every time, so one run of 4 cases says little. `--repeat 3` investigates each failure 3 times and reports "correct in X of 12 runs" per failure and overall.
 
+**Results** (`qwen2.5:3b` on a MacBook Air, 4 failures with a known cause):
+
+| | Before prompt and tool fixes | After |
+|---|---|---|
+| Correct (right cause, right source, no false claims) | 2 of 4 | **4 of 4**, identical in 3 runs |
+| Average tokens per investigation | 9,934 | 8,765 (−12%) |
+| Median time per investigation | 42.1 s | 29.8 s (−29%) |
+
+Before the fixes, one answer blamed the database connection instead of the stopped ETL job, and one claimed to have deleted 10,025 rows. The fixes: telling the model it can only read, listing the real tables when it queries one that does not exist, stating the key numbers first, and requiring evidence to quote real values. At temperature 0 the model is deterministic, so the 3 runs show the result is reproducible, not that it is robust. With only 4 cases, this is a sanity check, not a benchmark. Full reports: [eval/agent_results.md](eval/agent_results.md), [eval/agent_results_before.md](eval/agent_results_before.md).
+
 **False-claim guard.** After each answer, a check looks for claims of actions the agent cannot take ("deleted 10,025 rows", "was fixed", "executed successfully", "the rule has been updated"). If it finds one, the answer gets a warning, its confidence is set to low, and the dashboard shows the warning above the explanation.
 
 ## Tests

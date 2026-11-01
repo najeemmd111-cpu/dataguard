@@ -41,6 +41,10 @@ flowchart LR
 
 53 questions over the 20-page knowledge base. Hybrid search with cross-encoder re-ranking puts the right section first for **83%** of questions, against 58% for keyword search alone and 68% for vector search, at about 235 ms per question. Details: [agent/eval/results.md](agent/eval/results.md).
 
+## Root-cause agent results
+
+A local `qwen2.5:3b` model (Ollama) with tools (re-ranked doc search, rule history, read-only SQL) explains failures as schema-validated JSON. On the 4 seeded failures with a known cause, it went from **2 of 4 correct to 4 of 4** (identical in 3 runs) after prompt and tool fixes, while using 12% fewer tokens and 29% less time. Every model call is logged with tokens and latency. Details: [agent/README.md](agent/README.md).
+
 ## Quick start
 
 Requirements: Docker Desktop, Node 20+ (for the MCP server and dashboard).
