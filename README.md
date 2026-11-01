@@ -39,7 +39,8 @@ flowchart LR
 | 3B | Root-cause agent (tools, read-only SQL, structured answers), LLM usage logging, AI usage page | ✅ local model via Ollama |
 | 4 | n8n alerts on state changes (email, optional Slack) | ✅ see `n8n/` |
 | 4 | Spring AI explainer (Java 21, Spring Boot 3.5, structured output) | ✅ see `explainer-service/` |
-| 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
+| 5 | Kubernetes on kind: StatefulSet, Job, Deployments, probes, non-root, CI deploy + smoke test | ✅ see `k8s/` |
+| 5 | Jenkins pipeline, Cloud Run deployment | ⬜ see `Jenkinsfile`, `deploy/gcp/` |
 
 ## Retrieval results
 
@@ -87,6 +88,13 @@ docker compose --profile alerts up -d
 curl -X POST localhost:8000/alerts/test   # then read the email at http://localhost:8025
 ```
 
+Or run the core on Kubernetes (kind) instead of Compose:
+
+```bash
+brew install kind kubectl
+k8s/deploy.sh && k8s/smoke-test.sh        # dashboard on http://localhost:8880
+```
+
 Then the Spring AI explainer (Java, built inside Docker):
 
 ```bash
@@ -132,7 +140,8 @@ dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI acces
 e2e/                Playwright + axe: 42 end-to-end and accessibility tests
 n8n/                alert workflow (webhook → email via Mailpit, Slack for new critical failures)
 explainer-service/  Java Spring Boot + Spring AI: POST /explain → cause, impact, fix steps
-k8s/ deploy/        phase 5 (READMEs with instructions)
+k8s/                Kubernetes manifests, deploy.sh, smoke-test.sh (kind)
+deploy/             phase 5 cloud deployment (README with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```
@@ -150,7 +159,7 @@ cd agent && pip install -r requirements-dev.txt && pytest                       
 
 The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`. The end-to-end tests need the stack running (`docker compose up -d`); see `e2e/README.md`.
 
-CI runs all six suites on every push, plus the retrieval evaluation with the real models (results in the `agent` job summary). The Playwright HTML report is saved with each run (Actions → run → Artifacts).
+CI runs all six suites on every push, plus the retrieval evaluation with the real models (results in the `agent` job summary), and deploys the stack to a throwaway kind cluster for a smoke test. The Playwright HTML report is saved with each run (Actions → run → Artifacts).
 
 ## Design choices
 
@@ -163,4 +172,4 @@ CI runs all six suites on every push, plus the retrieval evaluation with the rea
 
 ## What's next
 
-See the phase READMEs. Next: phase 5 (Kubernetes on kind, a Jenkins pipeline, one cloud deployment).
+See the phase READMEs. Next: a Jenkins pipeline and one cloud deployment (Cloud Run).

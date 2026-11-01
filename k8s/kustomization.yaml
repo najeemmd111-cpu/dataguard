@@ -1,0 +1,14 @@
+# kubectl apply -k k8s/   (deploy.sh creates the two ConfigMaps from db/init.sql and contracts/ first)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dataguard
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: dataguard
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - postgres.yaml
+  - seed-job.yaml
+  - rules-engine.yaml
+  - dashboard.yaml
