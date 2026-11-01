@@ -122,10 +122,42 @@ services:
       postgres:
         condition: service_healthy
 
+  # Phase 5: a local Jenkins that runs the Jenkinsfile. Start it with:
+  #   docker compose --profile ci up -d --build      →  http://localhost:8090 (admin / admin)
+  jenkins:
+    build: ./jenkins
+    profiles: ["ci"]
+    ports:
+      - "8090:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin}
+      DATAGUARD_REPO: ${DATAGUARD_REPO:-https://github.com/najeemmd111-cpu/dataguard.git}
+      DATAGUARD_BRANCH: ${DATAGUARD_BRANCH:-main}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    depends_on:
+      jenkins-db:
+        condition: service_healthy
+
+  # Throwaway database for the pipeline's tests (the tests drop and reseed it).
+  jenkins-db:
+    image: pgvector/pgvector:pg16
+    profiles: ["ci"]
+    environment:
+      POSTGRES_USER: dataguard
+      POSTGRES_PASSWORD: dataguard
+      POSTGRES_DB: dataguard
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 volumes:
   pgdata:
   models:
   n8n_data:
+  jenkins_home:
 
 # The MCP server is not a compose service: an MCP client (Claude Desktop,
 # Claude Code, MCP Inspector) starts it over stdio. See mcp-server/README.md.

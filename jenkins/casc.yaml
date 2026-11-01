@@ -1,0 +1,35 @@
+# Configuration as Code: applied on every start, so nothing is set up by hand.
+jenkins:
+  systemMessage: "DataGuard CI. Configured from jenkins/casc.yaml; changes made here are reset on restart."
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: ${JENKINS_ADMIN_PASSWORD:-admin}
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: ${JENKINS_PUBLIC_URL:-http://localhost:8090/}
+
+jobs:
+  - script: |
+      pipelineJob('dataguard') {
+        description('Runs the Jenkinsfile from the DataGuard repository: the same checks as GitHub Actions.')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${DATAGUARD_REPO:-https://github.com/najeemmd111-cpu/dataguard.git}') }
+                branch('${DATAGUARD_BRANCH:-main}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

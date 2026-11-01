@@ -28,3 +28,4 @@ agent/eval-results/
 
 # Phase 4b
 explainer-service/target/
+reports/

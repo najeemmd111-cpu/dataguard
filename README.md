@@ -40,7 +40,8 @@ flowchart LR
 | 4 | n8n alerts on state changes (email, optional Slack) | ✅ see `n8n/` |
 | 4 | Spring AI explainer (Java 21, Spring Boot 3.5, structured output) | ✅ see `explainer-service/` |
 | 5 | Kubernetes on kind: StatefulSet, Job, Deployments, probes, non-root, CI deploy + smoke test | ✅ see `k8s/` |
-| 5 | Jenkins pipeline, Cloud Run deployment | ⬜ see `Jenkinsfile`, `deploy/gcp/` |
+| 5 | Jenkins in Docker: Configuration as Code, pipeline job created automatically, JUnit reports | ✅ see `jenkins/` |
+| 5 | Cloud Run deployment | ⬜ see `deploy/gcp/` |
 
 ## Retrieval results
 
@@ -95,6 +96,12 @@ brew install kind kubectl
 k8s/deploy.sh && k8s/smoke-test.sh        # dashboard on http://localhost:8880
 ```
 
+Or run the CI pipeline in a local Jenkins:
+
+```bash
+docker compose --profile ci up -d --build  # http://localhost:8090 (admin / admin), job "dataguard"
+```
+
 Then the Spring AI explainer (Java, built inside Docker):
 
 ```bash
@@ -143,7 +150,8 @@ explainer-service/  Java Spring Boot + Spring AI: POST /explain → cause, impac
 k8s/                Kubernetes manifests, deploy.sh, smoke-test.sh (kind)
 deploy/             phase 5 cloud deployment (README with instructions)
 .github/workflows/  CI
-Jenkinsfile         same pipeline for Jenkins (phase 5)
+jenkins/            Jenkins image with the toolchains, Configuration as Code (phase 5)
+Jenkinsfile         the Jenkins pipeline: same checks as GitHub Actions, with JUnit reports
 ```
 
 ## Tests
@@ -172,4 +180,4 @@ CI runs all six suites on every push, plus the retrieval evaluation with the rea
 
 ## What's next
 
-See the phase READMEs. Next: a Jenkins pipeline and one cloud deployment (Cloud Run).
+See the phase READMEs. Next: one cloud deployment (Cloud Run).

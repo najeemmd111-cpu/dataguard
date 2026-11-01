@@ -1,0 +1,8 @@
+# Installed into the image by jenkins-plugin-cli (latest versions compatible with this Jenkins).
+configuration-as-code
+job-dsl
+workflow-aggregator
+pipeline-stage-view
+git
+junit
+timestamper
