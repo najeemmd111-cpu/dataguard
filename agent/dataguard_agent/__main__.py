@@ -4,22 +4,33 @@
     python -m dataguard_agent search "why are orders stale?" [--method hybrid_rerank]
     python -m dataguard_agent evaluate                 # compare the four methods
     python -m dataguard_agent sections                 # list section ids (for writing questions)
+
+    python -m dataguard_agent setup                    # agent tables + read-only database user
+    python -m dataguard_agent investigate orders_fresh # explain why a rule failed (needs Ollama)
+    python -m dataguard_agent evaluate-agent           # grade the agent on failures with a known cause
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import textwrap
 import time
 from pathlib import Path
 
+from .agent import AgentError, RootCauseAgent, find_dataset
+from .agent_eval import grade, load_cases
+from .agent_eval import to_markdown as agent_markdown
 from .chunking import load_docs
 from .config import get_settings
+from .db_setup import setup
 from .evaluate import EVAL_DIR, build_meta, check_labels, load_questions, run, to_markdown, write_outputs
+from .llm import LLMError, LoggedLLM, make_backend
 from .models import load_embedder, load_reranker
 from .search import METHODS, Searcher
 from .store import connect, indexed_model, rebuild
+from .tools import Tools
 
 
 def cmd_ingest(_: argparse.Namespace) -> int:
@@ -81,6 +92,90 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_setup(_: argparse.Namespace) -> int:
+    settings = get_settings()
+    with connect(settings.database_url) as conn:
+        setup(conn, settings)
+    print(f"Ready: dq.investigations, dq.llm_calls, and the read-only user {settings.readonly_user}.")
+    return 0
+
+
+def _agent(conn, settings) -> RootCauseAgent:
+    setup(conn, settings)
+    searcher = _searcher(conn, settings, need_reranker=True)
+    llm = LoggedLLM(make_backend(settings), conn, settings)
+    return RootCauseAgent(conn, llm, Tools(conn, searcher, settings), settings)
+
+
+def print_record(record: dict, verbose: bool) -> None:
+    head = f"{record['dataset']}/{record['rule_id']}"
+    if record["status"] != "ok":
+        print(f"Investigation of {head} failed: {record['error']}")
+        return
+    a = record["answer"]
+    print(f"\n{head}  (confidence: {a['confidence']})\n")
+    print(textwrap.fill(a["summary"], 100))
+    print("\nLikely cause\n" + textwrap.indent(textwrap.fill(a["likely_cause"], 96), "  "))
+    print("\nEvidence")
+    for e in a["evidence"]:
+        print("  - " + e)
+    print("\nFix")
+    for i, step in enumerate(a["fix_steps"], 1):
+        print(f"  {i}. {step}")
+    print("\nSources: " + (", ".join(a["sources"]) or "none verified"))
+    if verbose:
+        print("\nTrace")
+        for t in record["trace"]:
+            if t["type"] == "tool":
+                print(f"  round {t['round']}: {t['tool']}({json.dumps(t['arguments'])}) -> {t['result'][:120]}")
+            else:
+                print(f"  {t['type']}: {json.dumps({k: v for k, v in t.items() if k != 'type'}, default=str)[:160]}")
+    print(f"\n{record['tool_calls']} tool call(s), {record['input_tokens'] + record['output_tokens']:,} tokens, "
+          f"{record['latency_ms'] / 1000:.1f} s, model {record['model']}. Saved as investigation "
+          f"{record['investigation_id']}.")
+
+
+def cmd_investigate(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    with connect(settings.database_url) as conn:
+        try:
+            dataset = args.dataset or find_dataset(conn, args.rule_id)
+            agent = _agent(conn, settings)
+            print(f"Investigating {dataset}/{args.rule_id} with {agent.llm.model}… (a local model can take a minute)")
+            record = agent.investigate(dataset, args.rule_id, args.result_id)
+        except (AgentError, LLMError) as exc:
+            print(f"Error: {exc}")
+            return 1
+    print_record(record, args.verbose)
+    return 0 if record["status"] == "ok" else 1
+
+
+def cmd_evaluate_agent(args: argparse.Namespace) -> int:
+    settings = get_settings()
+    cases = load_cases(Path(args.cases))
+    rows = []
+    with connect(settings.database_url) as conn:
+        agent = _agent(conn, settings)
+        for case in cases:
+            print(f"Investigating {case.dataset}/{case.rule_id}…", flush=True)
+            agent.llm.total_in = agent.llm.total_out = 0
+            agent.tools.seen_sections.clear()
+            try:
+                record = agent.investigate(case.dataset, case.rule_id)
+            except AgentError as exc:
+                print(f"  skipped: {exc}")
+                continue
+            rows.append(grade(case, record))
+    report = agent_markdown(rows, settings.llm_model)
+    print("\n" + report)
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "agent_results.md").write_text(report, encoding="utf-8")
+    (out / "agent_results.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    print(f"Saved {out / 'agent_results.md'}")
+    return 0
+
+
 def cmd_sections(_: argparse.Namespace) -> int:
     for chunk in load_docs(get_settings().docs_dir):
         if "~" not in chunk.chunk_id or chunk.chunk_id.endswith("~1"):
@@ -103,6 +198,17 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--output", default=str(EVAL_DIR))
     e.set_defaults(func=cmd_evaluate)
     sub.add_parser("sections", help="list section ids").set_defaults(func=cmd_sections)
+    sub.add_parser("setup", help="create agent tables and the read-only user").set_defaults(func=cmd_setup)
+    i = sub.add_parser("investigate", help="explain why a rule failed")
+    i.add_argument("rule_id")
+    i.add_argument("--dataset", help="defaults to the dataset the rule belongs to")
+    i.add_argument("--result-id", type=int, help="explain a specific result instead of the latest")
+    i.add_argument("-v", "--verbose", action="store_true", help="show every tool call")
+    i.set_defaults(func=cmd_investigate)
+    a = sub.add_parser("evaluate-agent", help="grade the agent on failures with a known cause")
+    a.add_argument("--cases", default=str(EVAL_DIR / "agent_cases.jsonl"))
+    a.add_argument("--output", default=str(EVAL_DIR))
+    a.set_defaults(func=cmd_evaluate_agent)
     args = parser.parse_args(argv)
     return args.func(args)
 

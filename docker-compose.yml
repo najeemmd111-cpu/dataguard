@@ -46,12 +46,17 @@ services:
   #   docker compose run --rm agent ingest
   #   docker compose run --rm agent search "why are orders stale?"
   #   docker compose run --rm agent evaluate
+  #   docker compose run --rm agent investigate orders_fresh   (needs Ollama running on your machine)
   agent:
     build: ./agent
     profiles: ["tools"]
     environment:
       DATABASE_URL: postgresql://dataguard:dataguard@postgres:5432/dataguard
       DOCS_DIR: /docs
+      OLLAMA_URL: http://host.docker.internal:11434    # Ollama runs on the host, outside Docker
+      DG_LLM_MODEL: ${DG_LLM_MODEL:-qwen2.5:3b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"            # makes the name work on Linux too
     volumes:
       - ./docs:/docs:ro
       - ./agent/eval:/app/eval          # evaluation results are written back here

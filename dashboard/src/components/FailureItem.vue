@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { api, ApiError, type Annotation, type Result } from '@/api'
 import { dateTime, timeAgo } from '@/format'
 
+import AiExplanation from './AiExplanation.vue'
 import SampleTable from './SampleTable.vue'
 import SeverityTag from './SeverityTag.vue'
 
@@ -74,6 +75,8 @@ async function addNote() {
         <h4 class="sub">Sample rows</h4>
         <SampleTable :rows="result.sample_rows" :caption="`Sample rows for ${result.rule_id}`" />
       </template>
+
+      <AiExplanation :dataset="result.dataset" :rule-id="result.rule_id" />
 
       <h4 class="sub">Notes</h4>
       <ul v-if="notes.length" class="notes" data-testid="notes">

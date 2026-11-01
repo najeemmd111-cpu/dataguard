@@ -80,6 +80,45 @@ export interface AuditEntry {
   detail: string | null
 }
 
+export interface AgentAnswer {
+  summary: string
+  likely_cause: string
+  evidence: string[]
+  fix_steps: string[]
+  confidence: 'low' | 'medium' | 'high'
+  sources: string[]
+}
+
+export interface Investigation {
+  investigation_id: number
+  created_at: string
+  dataset: string
+  rule_id: string
+  result_id: number | null
+  model: string
+  status: 'running' | 'ok' | 'error'
+  answer: AgentAnswer | null
+  tool_calls: number
+  input_tokens: number
+  output_tokens: number
+  latency_ms: number
+  error: string | null
+}
+
+export interface LlmCall {
+  call_id: number
+  at: string
+  purpose: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: string | number
+  latency_ms: number
+  success: boolean
+  error: string | null
+  investigation_id: number | null
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -138,6 +177,14 @@ export const api = {
   audit: (limit = 200) => request<AuditEntry[]>(`/audit?limit=${limit}`),
   runChecks: (dataset?: string) =>
     request<Run>('/runs', { method: 'POST', body: JSON.stringify({ dataset: dataset ?? null }) }),
+  investigations: (
+    params: { dataset?: string; rule_id?: string; status?: string; limit?: number } = {},
+  ) => {
+    const q = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v !== undefined) q.set(k, String(v))
+    return request<Investigation[]>(`/investigations?${q}`)
+  },
+  llmCalls: (limit = 1000) => request<LlmCall[]>(`/llm-calls?limit=${limit}`),
   annotate: (resultId: number, note: string) =>
     request<Annotation>(`/results/${resultId}/annotations`, {
       method: 'POST',

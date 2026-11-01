@@ -1,6 +1,6 @@
-# Knowledge search and evaluation (Phase 3, part A)
+# Knowledge search and root-cause agent (Phase 3)
 
-Searches the rules documentation in [`docs/`](../docs) four different ways, and measures which way finds the right section most often. The root-cause agent (part B) will use the best method to look up causes and fixes.
+**Part A** searches the rules documentation in [`docs/`](../docs) four different ways, and measures which way finds the right section most often. **Part B** is an agent that uses the best method, the data itself and a local language model to explain why a rule failed.
 
 ## How it works
 
@@ -72,14 +72,41 @@ CI runs the same evaluation with the real models on every push and shows the tab
 
 Full report, including the questions that were missed: [eval/results.md](eval/results.md).
 
+## Part B: the root-cause agent
+
+Ask why a rule failed:
+
+```bash
+ollama pull qwen2.5:3b                                        # once; Ollama must be running
+docker compose run --rm agent investigate orders_fresh        # add -v to see every tool call
+docker compose run --rm agent evaluate-agent                  # grade it on the 4 failures with a known cause
+```
+
+How an investigation works:
+
+1. **Gather** (code, no model): the failing result (measured value, threshold, sample rows) and the 4 most relevant doc sections from the re-ranked search. Even a small model starts well informed.
+2. **Investigate** (model + tools, at most 4 rounds): the model can call
+   - `search_docs`: the re-ranked hybrid search from part A
+   - `rule_history`: when the rule started failing
+   - `run_sql`: one read-only `SELECT` to check the data
+3. **Answer:** the model writes JSON that must match a schema (`summary`, `likely_cause`, `evidence`, `fix_steps`, `confidence`, `sources`). Ollama enforces the schema, and the answer is validated, with one retry. Cited sources the model was never shown are removed and recorded.
+
+**Safety of `run_sql`.** Queries run as a separate database user (`dataguard_agent_ro`) that can only `SELECT` from the business tables and `dq.results`/`dq.runs`. Its sessions are read-only, time out after 5 seconds, and return at most 20 rows. Only a single `SELECT` is accepted. Tests check that a `DELETE` hidden inside a `WITH` clause is blocked and that `dq.audit_log` cannot be read.
+
+**Logging.** Every model call is written to `dq.llm_calls` (step, model, tokens in and out, cost, latency, success or error). Every investigation is written to `dq.investigations` with its answer and full trace. The dashboard shows the latest explanation under each failure, and an **AI usage** page summarises calls, tokens and response times.
+
+**Model.** By default `qwen2.5:3b` through Ollama, free and on your own machine. Use another Ollama model with `DG_LLM_MODEL=llama3.2:3b docker compose run --rm agent …`. For a paid hosted model, set `DG_PRICE_IN_PER_MTOK` and `DG_PRICE_OUT_PER_MTOK` so costs are computed.
+
+**Grading.** `evaluate-agent` runs the agent on the 4 seeded failures, whose real causes are known, and checks each answer: valid JSON, cites a section that explains this failure, and mentions the key facts (for example *duplicate* and *upsert*). Grading uses keywords, not a second model, so it is simple and transparent, but it does not judge reasoning quality. Results are saved to `eval/agent_results.md`.
+
 ## Tests
 
 ```bash
 pytest                                          # chunking, metrics, fusion, and that every question points at a real section
-TEST_DATABASE_URL=postgresql://... pytest       # plus search tests against PostgreSQL + pgvector
+TEST_DATABASE_URL=postgresql://... pytest       # plus search and agent tests against PostgreSQL + pgvector (35 tests)
 ```
 
-The database tests use small offline stand-in models (`DG_EMBEDDER=hashing`), so they need no downloads. They check the code, not the search quality. Reports made with the stand-ins say so at the top.
+The database tests use small offline stand-in models (`DG_EMBEDDER=hashing`) and a scripted language model that replays prepared replies, so they need no downloads and no Ollama. They test tool calls, the round limit, retries, the read-only user, and logging. They check the code, not the search quality. Reports made with the stand-ins say so at the top.
 
 ## Adding knowledge
 

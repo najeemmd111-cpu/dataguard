@@ -112,7 +112,7 @@ CREATE INDEX IF NOT EXISTS audit_at_idx ON dq.audit_log (at DESC);
 CREATE TABLE IF NOT EXISTS dq.llm_calls (
     call_id        BIGSERIAL PRIMARY KEY,
     at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-    purpose        TEXT NOT NULL,            -- 'agent' | 'judge' | 'rag' | 'explainer'
+    purpose        TEXT NOT NULL,            -- 'agent-step' | 'agent-answer' | later: 'explainer'
     model          TEXT NOT NULL,
     input_tokens   INTEGER NOT NULL DEFAULT 0,
     output_tokens  INTEGER NOT NULL DEFAULT 0,
@@ -121,3 +121,23 @@ CREATE TABLE IF NOT EXISTS dq.llm_calls (
     success        BOOLEAN NOT NULL DEFAULT true,
     error          TEXT
 );
+ALTER TABLE dq.llm_calls ADD COLUMN IF NOT EXISTS investigation_id BIGINT;
+
+-- Phase 3B: one row per root-cause investigation, with the agent's answer and full trace.
+CREATE TABLE IF NOT EXISTS dq.investigations (
+    investigation_id BIGSERIAL PRIMARY KEY,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    dataset          TEXT NOT NULL,
+    rule_id          TEXT NOT NULL,
+    result_id        BIGINT,
+    model            TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'running',   -- running | ok | error
+    answer           JSONB,
+    trace            JSONB NOT NULL DEFAULT '[]'::jsonb,
+    tool_calls       INTEGER NOT NULL DEFAULT 0,
+    input_tokens     INTEGER NOT NULL DEFAULT 0,
+    output_tokens    INTEGER NOT NULL DEFAULT 0,
+    latency_ms       INTEGER NOT NULL DEFAULT 0,
+    error            TEXT
+);
+CREATE INDEX IF NOT EXISTS investigations_rule_idx ON dq.investigations (dataset, rule_id, created_at DESC);

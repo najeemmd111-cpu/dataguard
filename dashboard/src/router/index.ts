@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { title: 'AI access log' },
     },
     {
+      path: '/ai-usage',
+      name: 'ai-usage',
+      component: () => import('../views/AiUsageView.vue'),
+      meta: { title: 'AI usage' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('../views/NotFoundView.vue'),

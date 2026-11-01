@@ -2,3 +2,5 @@ fastembed>=0.9,<1.0
 psycopg[binary]>=3.2,<4
 pgvector>=0.3,<1.0
 numpy>=1.26
+ollama>=0.6,<1.0
+pydantic>=2.7,<3

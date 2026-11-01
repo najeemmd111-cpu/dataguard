@@ -80,3 +80,53 @@ describe('format', () => {
     expect(timeAgo(null, now)).toBe('never')
   })
 })
+
+import type { LlmCall } from '@/api'
+import { percentile, seconds, summarise, usd } from '@/usage'
+
+function call(purpose: string, latency: number, success = true, tin = 100, tout = 10): LlmCall {
+  return {
+    call_id: 1,
+    at: '2026-11-01T10:00:00Z',
+    purpose,
+    model: 'qwen2.5:3b',
+    input_tokens: tin,
+    output_tokens: tout,
+    cost_usd: '0.000000',
+    latency_ms: latency,
+    success,
+    error: success ? null : 'down',
+    investigation_id: 1,
+  }
+}
+
+describe('AI usage summary', () => {
+  it('computes nearest-rank percentiles', () => {
+    expect(percentile([], 50)).toBe(0)
+    expect(percentile([30, 10, 20], 50)).toBe(20)
+    expect(percentile([1, 2, 3, 4, 5, 6, 7, 8, 9, 100], 95)).toBe(100)
+  })
+
+  it('groups calls by step and ignores failed calls for latency', () => {
+    const s = summarise([
+      call('agent-step', 1000),
+      call('agent-step', 3000),
+      call('agent-step', 0, false, 0, 0),
+      call('agent-answer', 9000, true, 1400, 150),
+    ])
+    expect(s.calls).toBe(4)
+    expect(s.failed).toBe(1)
+    expect(s.inputTokens).toBe(1600)
+    expect(s.costUsd).toBe(0)
+    expect(s.models).toEqual(['qwen2.5:3b'])
+    expect(s.byPurpose.map((p) => p.purpose)).toEqual(['agent-step', 'agent-answer'])
+    expect(s.byPurpose[0]).toMatchObject({ calls: 3, failed: 1, medianMs: 1000, p95Ms: 3000 })
+  })
+
+  it('formats durations and money', () => {
+    expect(seconds(240)).toBe('240 ms')
+    expect(seconds(41_234)).toBe('41.2 s')
+    expect(usd(0)).toBe('$0')
+    expect(usd(0.0021)).toBe('$0.0021')
+  })
+})

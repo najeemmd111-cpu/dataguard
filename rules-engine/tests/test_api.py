@@ -79,3 +79,28 @@ def test_annotate_result(client):
     annotated = next(x for x in ds["latest_results"] if x["result_id"] == failure["result_id"])
     assert annotated["annotations"][0]["note"] == "ETL job paused"
     assert client.post("/results/999999/annotations", json={"note": "x"}).status_code == 404
+
+
+def test_investigations_and_llm_calls(client, conn):
+    assert client.get("/investigations").json() == []
+    conn.execute(
+        "INSERT INTO dq.investigations (dataset, rule_id, model, status, answer, tool_calls, latency_ms) "
+        "VALUES ('orders', 'orders_fresh', 'qwen2.5:3b', 'ok', '{\"summary\": \"ETL stopped\"}', 2, 41000), "
+        "('orders', 'orders_schema', 'qwen2.5:3b', 'error', NULL, 0, 900)"
+    )
+    conn.execute("INSERT INTO dq.llm_calls (purpose, model, input_tokens, output_tokens, latency_ms) "
+                 "VALUES ('agent-answer', 'qwen2.5:3b', 1400, 150, 9000)")
+    conn.commit()
+
+    ok = client.get("/investigations", params={"dataset": "orders", "rule_id": "orders_fresh"}).json()
+    assert len(ok) == 1 and ok[0]["answer"]["summary"] == "ETL stopped"
+    assert "trace" not in ok[0]
+    assert [i["rule_id"] for i in client.get("/investigations", params={"status": "error"}).json()] == ["orders_schema"]
+
+    detail = client.get(f"/investigations/{ok[0]['investigation_id']}").json()
+    assert detail["trace"] == []
+    assert client.get("/investigations/999999").status_code == 404
+    assert client.get("/llm-calls").json()[0]["input_tokens"] == 1400
+
+    conn.execute("DELETE FROM dq.investigations; DELETE FROM dq.llm_calls")
+    conn.commit()

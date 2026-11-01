@@ -214,7 +214,50 @@ def audit_log(limit: int = Query(100, ge=1, le=1000)) -> list[dict]:
     return fetch_all("SELECT * FROM dq.audit_log ORDER BY audit_id DESC LIMIT %s", (limit,))
 
 
+def _table_exists(name: str) -> bool:
+    return bool(fetch_one("SELECT to_regclass(%s) IS NOT NULL AS ok", (name,))["ok"])
+
+
 @app.get("/llm-calls")
 def llm_calls(limit: int = Query(200, ge=1, le=2000)) -> list[dict]:
-    """Phase 3: feeds the cost and latency page."""
+    """Every language-model call: tokens, cost, latency. Feeds the AI usage page."""
+    if not _table_exists("dq.llm_calls"):
+        return []
     return fetch_all("SELECT * FROM dq.llm_calls ORDER BY call_id DESC LIMIT %s", (limit,))
+
+
+INVESTIGATION_COLUMNS = (
+    "investigation_id, created_at, dataset, rule_id, result_id, model, status, answer, "
+    "tool_calls, input_tokens, output_tokens, latency_ms, error"
+)
+
+
+@app.get("/investigations")
+def investigations(
+    dataset: str | None = None,
+    rule_id: str | None = None,
+    status: Literal["ok", "error", "running"] | None = None,
+    limit: int = Query(20, ge=1, le=200),
+) -> list[dict]:
+    """Root-cause investigations written by the agent, newest first."""
+    if not _table_exists("dq.investigations"):
+        return []
+    return fetch_all(
+        f"SELECT {INVESTIGATION_COLUMNS} FROM dq.investigations "
+        "WHERE (%(dataset)s::text IS NULL OR dataset = %(dataset)s) "
+        "AND (%(rule_id)s::text IS NULL OR rule_id = %(rule_id)s) "
+        "AND (%(status)s::text IS NULL OR status = %(status)s) "
+        "ORDER BY created_at DESC, investigation_id DESC LIMIT %(limit)s",
+        {"dataset": dataset, "rule_id": rule_id, "status": status, "limit": limit},
+    )
+
+
+@app.get("/investigations/{investigation_id}")
+def investigation(investigation_id: int) -> dict:
+    """One investigation including the agent's step-by-step trace."""
+    row = None
+    if _table_exists("dq.investigations"):
+        row = fetch_one("SELECT * FROM dq.investigations WHERE investigation_id = %s", (investigation_id,))
+    if not row:
+        raise HTTPException(404, "investigation not found")
+    return row

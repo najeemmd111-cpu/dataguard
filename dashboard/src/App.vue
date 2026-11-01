@@ -24,6 +24,7 @@ const refresh = useRefreshStore()
         <RouterLink :to="{ name: 'overview' }">Overview</RouterLink>
         <RouterLink :to="{ name: 'runs' }">Run history</RouterLink>
         <RouterLink :to="{ name: 'audit' }">AI access log</RouterLink>
+        <RouterLink :to="{ name: 'ai-usage' }">AI usage</RouterLink>
       </nav>
 
       <button
