@@ -293,3 +293,27 @@ def test_regrade_command_scores_saved_investigations(env, tmp_path, monkeypatch,
     assert main(["regrade", str(inv_id), "--output", str(tmp_path), "--name", "before"]) == 0
     report = (tmp_path / "before.md").read_text()
     assert "| `orders/orders_fresh` | yes | yes | yes | yes |" in report
+
+
+@pytest.mark.parametrize("text, flagged", [
+    ("The rule has been updated to allow for a higher percentage of NULL email values.", True),
+    ("The threshold was raised to 0.95 so the check passes.", True),
+    ("min_ratio is now relaxed for old records.", True),           # also claims the rule changed
+    ("The amount column type was changed by an upstream team.", False),  # an observation, not an action
+    ("Consider lowering the threshold after review.", False),       # a recommendation
+])
+def test_claims_about_changed_rules(text, flagged):
+    from dataguard_agent.agent import claimed_actions
+
+    assert bool(claimed_actions({"summary": text, "likely_cause": "", "evidence": []})) is flagged
+
+
+def test_consistency_section_counts_correct_runs():
+    from dataguard_agent.agent_eval import consistency_section
+
+    good = grade(FRESH_CASE, _record())
+    bad = grade(FRESH_CASE, _record(summary="The rows were deleted.", likely_cause="Unknown"))
+    lines = "\n".join(consistency_section([good, bad, good]))
+    assert "Correct in 2 of 3 runs (67%)" in lines
+    assert "| `orders/orders_fresh` | 2 of 3 |" in lines
+    assert consistency_section([good]) == []

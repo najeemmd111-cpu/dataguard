@@ -117,7 +117,7 @@ cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt
 cd mcp-server && npm test                                                                    # 7 tests
 cd dashboard && npx vitest run                                                               # 12 tests
 cd e2e && npm install && npx playwright install chromium && npm test                         # 42 tests
-cd agent && pip install -r requirements-dev.txt && pytest                                     # 42 tests
+cd agent && pip install -r requirements-dev.txt && pytest                                     # 48 tests
 ```
 
 The engine tests use Testcontainers (needs Docker) or `TEST_DATABASE_URL`. The end-to-end tests need the stack running (`docker compose up -d`); see `e2e/README.md`.

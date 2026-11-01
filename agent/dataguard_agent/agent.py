@@ -69,7 +69,10 @@ ACTION_CLAIM = re.compile(
     r"\b(i|we) (deleted|removed|fixed|updated|restarted|reran|re-ran|dropped)\b"
     r"|\b(was|were|has been|have been|got) (deleted|removed|fixed|dropped|restarted|corrected)\b"
     r"|\b(deleted|deleting|removed|removing|dropped|dropping) \d[\d,]* (rows|records|orders|duplicates|duplicate)"
-    r"|executed successfully",
+    r"|executed successfully"
+    # "the rule has been updated", "the threshold was raised": the agent cannot change rules either
+    r"|\b(rule|rules|threshold|thresholds|contract|min_ratio|max_age)\b[^.]{0,60}?"
+    r"\b(has been|have been|was|were|is now|got) (updated|adjusted|changed|raised|lowered|increased|decreased|relaxed)\b",
     re.IGNORECASE,
 )
 

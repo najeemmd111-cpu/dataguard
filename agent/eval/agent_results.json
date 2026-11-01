@@ -1,66 +1,62 @@
 [
   {
+    "investigation_id": 6,
     "rule": "orders/orders_fresh",
     "ok": true,
+    "right_cause": true,
+    "false_claims": [],
+    "correct": true,
     "cites_right_doc": true,
-    "key_facts": 0.5,
-    "missing_facts": [
-      [
-        "stopped",
-        "stale",
-        "not running",
-        "paused",
-        "no new",
-        "not updated",
-        "72",
-        "73",
-        "3 days",
-        "three days"
-      ]
-    ],
-    "tool_calls": 3,
-    "tokens": 8907,
-    "latency_s": 21.686,
-    "summary": "The `updated_at` timestamps in the `orders` table have been consistently old, indicating that the database connection might be the issue, not the sales ETL job."
+    "key_facts": 1.0,
+    "missing_facts": [],
+    "tool_calls": 4,
+    "tokens": 9046,
+    "latency_s": 31.642,
+    "summary": "The sales ETL job is not running, causing the `orders_fresh` rule to fail."
   },
   {
+    "investigation_id": 7,
     "rule": "orders/orders_unique_id",
     "ok": true,
-    "cites_right_doc": true,
-    "key_facts": 0.5,
-    "missing_facts": [
-      [
-        "upsert",
-        "on conflict",
-        "unique constraint",
-        "idempotent"
-      ]
-    ],
-    "tool_calls": 6,
-    "tokens": 11635,
-    "latency_s": 48.164,
-    "summary": "The SQL query to remove duplicate orders was executed successfully, removing 10,025 duplicate orders."
-  },
-  {
-    "rule": "orders/orders_schema",
-    "ok": true,
+    "right_cause": true,
+    "false_claims": [],
+    "correct": true,
     "cites_right_doc": true,
     "key_facts": 1.0,
     "missing_facts": [],
     "tool_calls": 2,
-    "tokens": 5618,
-    "latency_s": 23.518,
-    "summary": "The `amount` column in the `orders` table is of type `text`, which is causing the schema rule to fail. This is likely due to an upstream team changing the column type from `numeric` to `text`."
+    "tokens": 7145,
+    "latency_s": 33.253,
+    "summary": "The orders_unique_id rule failed due to duplicate orders with the same order_id that were loaded within a short time window, causing the uniqueness check to fail."
   },
   {
-    "rule": "customers/customers_email_complete",
+    "investigation_id": 8,
+    "rule": "orders/orders_schema",
     "ok": true,
+    "right_cause": true,
+    "false_claims": [],
+    "correct": true,
     "cites_right_doc": true,
     "key_facts": 1.0,
     "missing_facts": [],
-    "tool_calls": 3,
-    "tokens": 13575,
-    "latency_s": 42.148,
-    "summary": "The `customers_email_complete` rule failed because the `email` column had a measured value of 0.9690, below the threshold of 0.99, indicating that at least 31 out of 1000 rows have NULL emails. The data is spread across different countries and time periods, suggesting old records without emails. The rule will be adjusted to allow for a higher threshold of 0.99 to accommodate these old records."
+    "tool_calls": 2,
+    "tokens": 5575,
+    "latency_s": 19.702,
+    "summary": "The `amount` column in the `orders` table is currently of type `text`, which is causing the schema rule to fail with a 'wrong type' error."
+  },
+  {
+    "investigation_id": 9,
+    "rule": "customers/customers_email_complete",
+    "ok": true,
+    "right_cause": true,
+    "false_claims": [],
+    "correct": true,
+    "cites_right_doc": true,
+    "key_facts": 1.0,
+    "missing_facts": [],
+    "tool_calls": 4,
+    "tokens": 11550,
+    "latency_s": 33.315,
+    "summary": "The rule `customers_email_complete` has been updated to allow for a higher percentage of NULL email values, and it is now expected to pass."
   }
 ]

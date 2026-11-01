@@ -71,6 +71,34 @@ def grade(case: Case, record: dict) -> dict:
     }
 
 
+def consistency_section(rows: list[dict]) -> list[str]:
+    """When cases ran several times: how often each one came out correct."""
+    by_rule: dict[str, list[dict]] = {}
+    for r in rows:
+        by_rule.setdefault(r["rule"], []).append(r)
+    if all(len(v) == 1 for v in by_rule.values()):
+        return []
+    total = sum(r["correct"] for r in rows)
+    lines = [
+        "## Consistency across runs",
+        "",
+        (f"Each failure was investigated {max(len(v) for v in by_rule.values())} times. "
+        f"**Correct in {total} of {len(rows)} runs ({total / len(rows):.0%}).**"),
+        "",
+        "| Failure | Correct runs | Right cause | No false claims | Cites a right doc | Median time |",
+        "|---|---|---|---|---|---|",
+    ]
+    for rule, runs in by_rule.items():
+        n = len(runs)
+        lines.append(
+            f"| `{rule}` | {sum(r['correct'] for r in runs)} of {n} | {sum(r['right_cause'] for r in runs)} of {n} "
+            f"| {sum(not r['false_claims'] for r in runs)} of {n} | {sum(r['cites_right_doc'] for r in runs)} of {n} "
+            f"| {percentile([r['latency_s'] for r in runs], 50):.1f} s |"
+        )
+    lines.append("")
+    return lines
+
+
 def _yes(v: bool) -> str:
     return "yes" if v else "**no**"
 
@@ -107,9 +135,9 @@ def to_markdown(rows: list[dict], model: str, title: str = "Root-cause agent eva
         "",
         "Grading uses keywords, not a second model: transparent, but it does not judge reasoning quality.",
         "",
-        "## Answers",
-        "",
     ]
+    lines += consistency_section(rows)
+    lines += ["## Answers", ""]
     for r in rows:
         lines.append(f"- `{r['rule']}` (investigation {r.get('investigation_id')}): {r['summary']}")
         if r["false_claims"]:

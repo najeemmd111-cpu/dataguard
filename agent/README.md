@@ -80,6 +80,7 @@ Ask why a rule failed:
 ollama pull qwen2.5:3b                                        # once; Ollama must be running
 docker compose run --rm agent investigate orders_fresh        # add -v to see every tool call
 docker compose run --rm agent evaluate-agent                  # grade it on the 4 failures with a known cause
+docker compose run --rm agent evaluate-agent --repeat 3       # run each case 3 times to measure consistency
 ```
 
 How an investigation works:
@@ -109,13 +110,15 @@ Grading uses keywords, not a second model, so it is simple and transparent, but 
 
 A first version of the grader only checked sources and keywords anywhere in the answer. It reported 100% "cites a right doc" while 2 of 4 answers were wrong: one blamed the database connection instead of the stopped ETL job, and one claimed to have deleted 10,025 rows, which the read-only agent cannot do. The stricter checks above came from reading those answers.
 
-**False-claim guard.** After each answer, a check looks for claims of actions the agent cannot take ("deleted 10,025 rows", "was fixed", "executed successfully"). If it finds one, the answer gets a warning, its confidence is set to low, and the dashboard shows the warning above the explanation.
+A small local model does not give the same answer every time, so one run of 4 cases says little. `--repeat 3` investigates each failure 3 times and reports "correct in X of 12 runs" per failure and overall.
+
+**False-claim guard.** After each answer, a check looks for claims of actions the agent cannot take ("deleted 10,025 rows", "was fixed", "executed successfully", "the rule has been updated"). If it finds one, the answer gets a warning, its confidence is set to low, and the dashboard shows the warning above the explanation.
 
 ## Tests
 
 ```bash
 pytest                                          # chunking, metrics, fusion, and that every question points at a real section
-TEST_DATABASE_URL=postgresql://... pytest       # plus search and agent tests against PostgreSQL + pgvector (42 tests)
+TEST_DATABASE_URL=postgresql://... pytest       # plus search and agent tests against PostgreSQL + pgvector (48 tests)
 ```
 
 The database tests use small offline stand-in models (`DG_EMBEDDER=hashing`) and a scripted language model that replays prepared replies, so they need no downloads and no Ollama. They test tool calls, the round limit, retries, the read-only user, and logging. They check the code, not the search quality. Reports made with the stand-ins say so at the top.

@@ -158,15 +158,17 @@ def cmd_evaluate_agent(args: argparse.Namespace) -> int:
     with connect(settings.database_url) as conn:
         agent = _agent(conn, settings)
         for case in cases:
-            print(f"Investigating {case.dataset}/{case.rule_id}…", flush=True)
-            agent.llm.total_in = agent.llm.total_out = 0
-            agent.tools.seen_sections.clear()
-            try:
-                record = agent.investigate(case.dataset, case.rule_id)
-            except AgentError as exc:
-                print(f"  skipped: {exc}")
-                continue
-            rows.append(grade(case, record))
+            for run in range(1, args.repeat + 1):
+                label = f" (run {run}/{args.repeat})" if args.repeat > 1 else ""
+                print(f"Investigating {case.dataset}/{case.rule_id}{label}…", flush=True)
+                agent.llm.total_in = agent.llm.total_out = 0
+                agent.tools.seen_sections.clear()
+                try:
+                    record = agent.investigate(case.dataset, case.rule_id)
+                except AgentError as exc:
+                    print(f"  skipped: {exc}")
+                    break
+                rows.append(grade(case, record))
     report = agent_markdown(rows, settings.llm_model)
     print("\n" + report)
     out = Path(args.output)
@@ -237,6 +239,8 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("evaluate-agent", help="grade the agent on failures with a known cause")
     a.add_argument("--cases", default=str(EVAL_DIR / "agent_cases.jsonl"))
     a.add_argument("--output", default=str(EVAL_DIR))
+    a.add_argument("--repeat", type=int, default=1,
+                   help="run each case N times to measure consistency (answers vary between runs)")
     a.set_defaults(func=cmd_evaluate_agent)
     r = sub.add_parser("regrade", help="re-grade saved investigations by id")
     r.add_argument("ids", nargs="+", type=int)
