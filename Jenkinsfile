@@ -24,6 +24,11 @@ pipeline {
     REPORTS = "${env.WORKSPACE}/reports"
     npm_config_cache = "${env.JENKINS_HOME}/.cache/npm"
     UV_CACHE_DIR = "${env.JENKINS_HOME}/.cache/uv"
+    // Docker Desktop's network on a Mac stalls when uv opens its default 50 parallel
+    // downloads (7+ minutes, or a timeout). A few at a time is much faster there.
+    UV_CONCURRENT_DOWNLOADS = '4'
+    UV_HTTP_TIMEOUT = '120'
+    UV_HTTP_RETRIES = '5'
     MAVEN_OPTS = "-Dmaven.repo.local=${env.JENKINS_HOME}/.m2/repository"
     FASTEMBED_CACHE_PATH = "${env.JENKINS_HOME}/.cache/fastembed"
   }
@@ -41,7 +46,7 @@ pipeline {
         dir('rules-engine') {
           sh '''
             uv venv --clear --python 3.12 --quiet .venv
-            uv pip install --python .venv --quiet -r requirements-dev.txt -r ../db/requirements.txt
+            uv pip install --python .venv -r requirements-dev.txt -r ../db/requirements.txt
             .venv/bin/ruff check .
             .venv/bin/pytest -v --junitxml="$REPORTS/rules-engine.xml" -o junit_suite_name=rules-engine
           '''
@@ -54,7 +59,7 @@ pipeline {
         dir('agent') {
           sh '''
             uv venv --clear --python 3.12 --quiet .venv
-            uv pip install --python .venv --quiet -r requirements-dev.txt
+            uv pip install --python .venv -r requirements-dev.txt
             .venv/bin/ruff check .
             .venv/bin/pytest -v --junitxml="$REPORTS/agent.xml" -o junit_suite_name=agent
           '''
