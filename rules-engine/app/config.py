@@ -10,6 +10,7 @@ class Settings:
     scheduler_enabled: bool
     sample_size: int
     failure_webhook_url: str | None  # phase 4: n8n webhook
+    dashboard_url: str               # used for links in alerts
 
 
 def get_settings() -> Settings:
@@ -21,4 +22,5 @@ def get_settings() -> Settings:
         scheduler_enabled=os.environ.get("SCHEDULER_ENABLED", "false").lower() == "true",
         sample_size=int(os.environ.get("SAMPLE_SIZE", "5")),
         failure_webhook_url=os.environ.get("FAILURE_WEBHOOK_URL") or None,
+        dashboard_url=os.environ.get("DASHBOARD_URL", "http://localhost:5173").rstrip("/"),
     )

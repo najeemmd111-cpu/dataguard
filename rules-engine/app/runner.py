@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
-import urllib.request
 
 import psycopg
 from psycopg.types.json import Jsonb
 
+from .alerts import event, previous_status, send, transition
 from .checks import CHECKERS, CheckResult
 from .config import get_settings
 from .contracts import load_contracts, merge_custom_rules
@@ -43,7 +42,7 @@ def run_checks(dataset: str | None = None, trigger: str = "manual") -> dict:
             raise KeyError(dataset)
         contracts = {dataset: contracts[dataset]}
 
-    failures: list[dict] = []
+    events: list[dict] = []
     with connect(autocommit=True) as conn:
         run_id = conn.execute(
             "INSERT INTO dq.runs (trigger, dataset) VALUES (%s, %s) RETURNING run_id", (trigger, dataset)
@@ -53,6 +52,7 @@ def run_checks(dataset: str | None = None, trigger: str = "manual") -> dict:
             for contract in contracts.values():
                 for rule in contract.rules:
                     result = _run_one_rule(conn, contract, rule, settings.sample_size)
+                    before = previous_status(conn, contract.dataset, rule.id)
                     total += 1
                     result_id = conn.execute(
                         "INSERT INTO dq.results (run_id, dataset, rule_id, rule_type, severity, passed, "
@@ -63,9 +63,13 @@ def run_checks(dataset: str | None = None, trigger: str = "manual") -> dict:
                     ).fetchone()[0]
                     if not result.passed:
                         failed += 1
-                        failures.append({"result_id": result_id, "dataset": contract.dataset, "rule_id": rule.id,
-                                         "severity": rule.severity, "message": result.message,
-                                         "owner": contract.owner})
+                    kind = transition(before, result.passed)
+                    if kind:
+                        events.append(event(
+                            kind, dataset=contract.dataset, rule_id=rule.id, rule_type=rule.type,
+                            severity=rule.severity, owner=contract.owner, message=result.message,
+                            measured_value=result.measured_value, threshold=result.threshold, result_id=result_id,
+                        ))
             status = "failed" if failed else "passed"
         except Exception:
             status = "error"
@@ -77,19 +81,9 @@ def run_checks(dataset: str | None = None, trigger: str = "manual") -> dict:
                 (status, total, failed, run_id),
             )
 
-    _notify(run_id, failures)
-    log.info("run %s: %s rules, %s failed", run_id, total, failed)
-    return {"run_id": run_id, "status": status, "total_rules": total, "failed_rules": failed}
-
-
-def _notify(run_id: int, failures: list[dict]) -> None:
-    """Phase 4: POST failures to the n8n webhook. Never breaks a run."""
-    url = get_settings().failure_webhook_url
-    if not url or not failures:
-        return
-    body = json.dumps({"run_id": run_id, "failures": failures}).encode()
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
-    try:
-        urllib.request.urlopen(req, timeout=5).close()
-    except Exception as exc:  # noqa: BLE001 - alerting is best effort
-        log.warning("failure webhook call failed: %s", exc)
+    still_failing = failed - sum(e["type"] == "failing" for e in events)
+    delivery = send(run_id, events, still_failing)
+    log.info("run %s: %s rules, %s failed, %s alert event(s)%s", run_id, total, failed, len(events),
+             "" if delivery.sent or not events else f" not sent ({delivery.error})")
+    return {"run_id": run_id, "status": status, "total_rules": total, "failed_rules": failed,
+            "alerts": {"events": len(events), "sent": delivery.sent}}

@@ -1,0 +1,153 @@
+{
+  "id": "DgAlerts00000001",
+  "name": "DataGuard failure alerts",
+  "active": true,
+  "nodes": [
+    {
+      "id": "0b5c7e0a-1d2b-4c3d-8e4f-5a6b7c8d9e01",
+      "name": "Alert from DataGuard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5f0d9a6e-2c4b-4e8f-9a1b-3c5d7e9f1a2b",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dataguard-failure",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "0b5c7e0a-1d2b-4c3d-8e4f-5a6b7c8d9e02",
+      "name": "Format alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// n8n Code node: turn DataGuard alert events into one email (and an optional Slack message).\n// The rules engine POSTs {summary, events, dashboard_url, ...}; the Webhook node puts it in `body`.\nconst body = $input.first().json.body ?? $input.first().json;\nconst events = body.events ?? [];\nconst summary = body.summary ?? {};\n\nconst icon = { failing: '❌', recovered: '✅', test: '🧪' };\nconst label = { failing: 'FAILING', recovered: 'RECOVERED', test: 'TEST' };\nconst esc = (s) => String(s ?? '').replace(/[&<>\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' })[c]);\n\nfunction line(e) {\n  const numbers = e.measured_value ? ` (measured ${e.measured_value}, allowed ${e.threshold})` : '';\n  return `${icon[e.type]} ${label[e.type]} [${e.severity}] ${e.dataset} / ${e.rule_id}: ${e.message ?? ''}${numbers}. ` +\n    `Owner: ${e.owner}. Open: ${e.dataset_url}`;\n}\n\nconst failing = events.filter((e) => e.type === 'failing');\nconst recovered = events.filter((e) => e.type === 'recovered');\nconst tests = events.filter((e) => e.type === 'test');\n\nlet subject;\nif (events.length === 1) {\n  const e = events[0];\n  subject = `DataGuard: ${e.dataset}/${e.rule_id} ${e.type === 'recovered' ? 'recovered' : e.type === 'test' ? 'test alert' : `is failing (${e.severity})`}`;\n} else {\n  const parts = [];\n  if (failing.length) parts.push(`${failing.length} rule${failing.length > 1 ? 's' : ''} failing`);\n  if (recovered.length) parts.push(`${recovered.length} recovered`);\n  if (tests.length) parts.push(`${tests.length} in a test alert`);\n  subject = `DataGuard: ${parts.join(', ')}`;\n}\n\nconst stillFailing = summary.still_failing\n  ? `\\n${summary.still_failing} other rule(s) are still failing from earlier runs.`\n  : '';\nconst text = [...events.map(line), stillFailing, `\\nDashboard: ${body.dashboard_url ?? ''}`].join('\\n').trim();\n\nconst rows = events.map((e) => `\n  <tr>\n    <td>${icon[e.type]} <strong>${label[e.type]}</strong></td>\n    <td>${esc(e.severity)}</td>\n    <td><a href=\"${esc(e.dataset_url)}\">${esc(e.dataset)} / ${esc(e.rule_id)}</a></td>\n    <td>${esc(e.message)}${e.measured_value ? `<br><small>measured ${esc(e.measured_value)}, allowed ${esc(e.threshold)}</small>` : ''}</td>\n    <td>${esc(e.owner)}</td>\n  </tr>`).join('');\nconst html = `<div style=\"font-family: Arial, sans-serif\">\n  <h2 style=\"margin:0 0 12px\">${esc(subject)}</h2>\n  <table cellpadding=\"6\" style=\"border-collapse:collapse\" border=\"1\">\n    <tr><th>Event</th><th>Severity</th><th>Rule</th><th>Details</th><th>Owner</th></tr>${rows}\n  </table>\n  ${stillFailing ? `<p>${esc(stillFailing.trim())}</p>` : ''}\n  <p><a href=\"${esc(body.dashboard_url)}\">Open the DataGuard dashboard</a></p>\n</div>`;\n\n// Slack only for rules that just started failing with critical severity, and only if a webhook is set.\nconst critical = failing.filter((e) => e.severity === 'critical');\nconst slackUrl = $env.SLACK_WEBHOOK_URL || '';\nconst slackText = critical.map(line).join('\\n');\n\nreturn [{\n  json: {\n    subject,\n    text,\n    html,\n    to: $env.ALERT_EMAIL_TO || 'data-team@example.com',\n    mailpitUrl: ($env.MAILPIT_URL || 'http://mailpit:8025').replace(/\\/$/, ''),\n    sendSlack: critical.length > 0 && slackUrl !== '',\n    slackUrl,\n    slackText,\n    events: events.length,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "0b5c7e0a-1d2b-4c3d-8e4f-5a6b7c8d9e03",
+      "name": "Send email (Mailpit)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        -100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.mailpitUrl }}/api/v1/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ From: { Email: 'dataguard@example.com', Name: 'DataGuard' }, To: [{ Email: $json.to }], Subject: $json.subject, Text: $json.text, HTML: $json.html, Tags: ['dataguard'] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "0b5c7e0a-1d2b-4c3d-8e4f-5a6b7c8d9e04",
+      "name": "New critical failure and Slack set up?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8c1f2a3b-4d5e-4f60-8172-93a4b5c6d7e8",
+              "leftValue": "={{ $json.sendSlack }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0b5c7e0a-1d2b-4c3d-8e4f-5a6b7c8d9e05",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slackUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.slackText }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Alert from DataGuard": {
+      "main": [
+        [
+          {
+            "node": "Format alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format alert": {
+      "main": [
+        [
+          {
+            "node": "Send email (Mailpit)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "New critical failure and Slack set up?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New critical failure and Slack set up?": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "3d6f1e2a-7b8c-4d9e-a0f1-b2c3d4e5f607"
+}

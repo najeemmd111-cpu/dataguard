@@ -214,6 +214,31 @@ def audit_log(limit: int = Query(100, ge=1, le=1000)) -> list[dict]:
     return fetch_all("SELECT * FROM dq.audit_log ORDER BY audit_id DESC LIMIT %s", (limit,))
 
 
+@app.post("/alerts/test")
+def test_alert() -> dict:
+    """Send the currently failing rules to the alert webhook as "test" events, to check the alert chain."""
+    from .alerts import event, send
+
+    settings = get_settings()
+    if not settings.failure_webhook_url:
+        raise HTTPException(409, "FAILURE_WEBHOOK_URL is not set, so there is nowhere to send alerts.")
+    contracts = current_contracts()
+    failing = list_failures(severity=None, dataset=None, limit=50)
+    events = [
+        event("test", dataset=f["dataset"], rule_id=f["rule_id"], rule_type=f["rule_type"], severity=f["severity"],
+              owner=contracts[f["dataset"]].owner if f["dataset"] in contracts else "unknown",
+              message=f["message"], measured_value=f["measured_value"], threshold=f["threshold"],
+              result_id=f["result_id"])
+        for f in failing
+    ]
+    if not events:
+        raise HTTPException(409, "Nothing is failing, so there is nothing to send. Run the checks first.")
+    delivery = send(None, events, still_failing=0)
+    if not delivery.sent:
+        raise HTTPException(502, f"The alert webhook could not be reached: {delivery.error}")
+    return {"sent": True, "events": delivery.events, "webhook_status": delivery.status}
+
+
 def _table_exists(name: str) -> bool:
     return bool(fetch_one("SELECT to_regclass(%s) IS NOT NULL AS ok", (name,))["ok"])
 

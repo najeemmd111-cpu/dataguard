@@ -22,7 +22,9 @@ flowchart LR
   M -- audit rows --> PG
   A[AI client<br/>Claude Desktop / Code] -- MCP stdio --> M
   D[Dashboard<br/>Vue 3 · TypeScript] -- /api --> E
-  E -. webhook .-> N[n8n · phase 4]
+  E -- state changes --> N[n8n workflow]
+  N --> MP[Email · Mailpit]
+  N -. new critical .-> SL[Slack]
 ```
 
 ## Status
@@ -34,7 +36,8 @@ flowchart LR
 | 2 | Playwright end-to-end + axe accessibility tests, dashboard CI | ✅ 42 tests |
 | 3A | Knowledge base, hybrid search (full-text + pgvector + re-ranking), retrieval evaluation | ✅ see `agent/` |
 | 3B | Root-cause agent (tools, read-only SQL, structured answers), LLM usage logging, AI usage page | ✅ local model via Ollama |
-| 4 | n8n alerts, Spring AI explainer | ⬜ see `n8n/`, `explainer-service/` |
+| 4 | n8n alerts on state changes (email, optional Slack) | ✅ see `n8n/` |
+| 4 | Spring AI explainer | ⬜ see `explainer-service/` |
 | 5 | Kubernetes (kind), Jenkins, Cloud Run | ⬜ see `k8s/`, `Jenkinsfile`, `deploy/gcp/` |
 
 ## Retrieval results
@@ -71,6 +74,13 @@ npm run inspect                    # try the tools in the MCP Inspector
 ```
 
 …and connect it to Claude Desktop or Claude Code (see `mcp-server/README.md`).
+
+Then the alerts (n8n and a fake inbox):
+
+```bash
+docker compose --profile alerts up -d
+curl -X POST localhost:8000/alerts/test   # then read the email at http://localhost:8025
+```
 
 Then the knowledge search:
 
@@ -109,7 +119,8 @@ docs/               knowledge base: 20 pages on rules, causes and runbooks (sear
 agent/              knowledge search (pgvector + full-text, RRF, re-ranking, evaluation) and the root-cause agent
 dashboard/          Vue 3 + TypeScript: overview, dataset, run history, AI access log
 e2e/                Playwright + axe: 42 end-to-end and accessibility tests
-explainer-service/ n8n/ k8s/ deploy/   later phases (READMEs with instructions)
+n8n/                alert workflow (webhook → email via Mailpit, Slack for new critical failures)
+explainer-service/ k8s/ deploy/   later phases (READMEs with instructions)
 .github/workflows/  CI
 Jenkinsfile         same pipeline for Jenkins (phase 5)
 ```
@@ -117,7 +128,7 @@ Jenkinsfile         same pipeline for Jenkins (phase 5)
 ## Tests
 
 ```bash
-cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt && pytest   # 31 tests
+cd rules-engine && pip install -r requirements-dev.txt -r ../db/requirements.txt && pytest   # 41 tests
 cd mcp-server && npm test                                                                    # 7 tests
 cd dashboard && npx vitest run                                                               # 12 tests
 cd e2e && npm install && npx playwright install chromium && npm test                         # 42 tests
@@ -135,7 +146,8 @@ CI runs all five suites on every push, plus the retrieval evaluation with the re
 - **One failing check never breaks a run.** Each rule runs in its own transaction; errors are stored as failed results.
 - **Runtime rules** added via the API or MCP live in `dq.custom_rules` and merge with the YAML (YAML wins on id clash).
 - **Every MCP call is audited**, including denied calls and calls that error.
+- **Alerts fire on state changes only** (a rule starts failing or recovers), never after every run, to avoid alert fatigue. A broken webhook never breaks a check run.
 
 ## What's next
 
-See the phase READMEs. Next: phase 4 (n8n alerts, Spring AI explainer) and phase 5 (Kubernetes, Jenkins, a cloud deployment).
+See the phase READMEs. Next: the Spring AI explainer (phase 4) and phase 5 (Kubernetes, Jenkins, a cloud deployment).

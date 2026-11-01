@@ -31,6 +31,9 @@ services:
       DATABASE_URL: postgresql://dataguard:dataguard@postgres:5432/dataguard
       CONTRACTS_DIR: /contracts
       SCHEDULER_ENABLED: "true"
+      # Phase 4: alerts go to the n8n workflow (start it with: docker compose --profile alerts up -d)
+      FAILURE_WEBHOOK_URL: ${FAILURE_WEBHOOK_URL:-http://n8n:5678/webhook/dataguard-failure}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:5173}
     volumes:
       - ./contracts:/contracts:ro
     ports:
@@ -65,9 +68,47 @@ services:
       postgres:
         condition: service_healthy
 
+  # Phase 4: alerting. Not started by a plain `docker compose up`; start it with:
+  #   docker compose --profile alerts up -d
+  # n8n: http://localhost:5678   Mailpit (fake inbox): http://localhost:8025
+  n8n:
+    image: n8nio/n8n:2.45.7
+    profiles: ["alerts"]
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_LISTEN_ADDRESS: 0.0.0.0
+      N8N_SECURE_COOKIE: "false"                 # plain http on localhost
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"      # the workflow reads the settings below
+      GENERIC_TIMEZONE: ${TZ:-Europe/Paris}
+      MAILPIT_URL: http://mailpit:8025
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-data-team@example.com}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}  # optional: new critical failures also go to Slack
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+    # Import (or update) the DataGuard workflow and publish it on every start, then run n8n.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        n8n import:workflow --input=/workflows/dataguard-alerts.json &&
+        n8n publish:workflow --id=DgAlerts00000001 &&
+        exec n8n start
+    depends_on:
+      - mailpit
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    profiles: ["alerts"]
+    ports:
+      - "8025:8025"     # web inbox and HTTP API
+      - "1025:1025"     # SMTP, if you prefer n8n's Send Email node
+
 volumes:
   pgdata:
   models:
+  n8n_data:
 
 # The MCP server is not a compose service: an MCP client (Claude Desktop,
 # Claude Code, MCP Inspector) starts it over stdio. See mcp-server/README.md.
