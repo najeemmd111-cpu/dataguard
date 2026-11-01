@@ -49,6 +49,10 @@ flowchart LR
 
 A local `qwen2.5:3b` model (Ollama) with tools (re-ranked doc search, rule history, read-only SQL) explains failures as schema-validated JSON. On the 4 seeded failures with a known cause, it went from **2 of 4 correct to 4 of 4** (identical in 3 runs) after prompt and tool fixes, while using 12% fewer tokens and 29% less time. Every model call is logged with tokens and latency. Details: [agent/README.md](agent/README.md).
 
+## Explainer vs agent
+
+The same failure explained two ways: the Spring AI explainer (one model call) took **638 tokens and 6.8 s**; the tool-using agent took about 8,800 tokens and 30 s but checks the data and cites the documentation. Details: [explainer-service/README.md](explainer-service/README.md).
+
 ## Quick start
 
 Requirements: Docker Desktop, Node 20+ (for the MCP server and dashboard).

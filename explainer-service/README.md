@@ -38,6 +38,20 @@ Health check: `curl localhost:8081/actuator/health`.
 - Every call, successful or not, is written to **`dq.llm_calls`** with purpose `explainer`, so it appears on the dashboard's **AI usage** page next to the agent's calls. Logging is best effort: the explanation is still returned if the database is down.
 - Errors: an unreachable model or an unusable answer → `502` (`ProblemDetail`); a request missing `dataset`, `rule_id`, `rule_type` or `severity` → `400`.
 
+## Result
+
+First run on a MacBook Air with `qwen2.5:3b`, explaining `orders/orders_fresh` (the seeded stopped-ETL failure): the cause was right ("the data ingestion process … interrupted or delayed"), the first three fix steps were relevant, and the fourth was generic. Full answer: [examples/orders_fresh.json](examples/orders_fresh.json).
+
+| | Explainer (Spring AI, one call) | Root-cause agent (Python, tools) |
+|---|---|---|
+| Model calls | 1 | about 4–5 |
+| Tokens | 638 | about 8,800 |
+| Time | 6.8 s | about 30 s |
+| Checks the data, cites docs | no | yes (read-only SQL, re-ranked search) |
+| Good for | quick summaries in alerts or buttons | real investigations |
+
+The explainer is about 14× cheaper and 4× faster. The agent is slower but grounded in evidence.
+
 ## Tests
 
 ```bash
